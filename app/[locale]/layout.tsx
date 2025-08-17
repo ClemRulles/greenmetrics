@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { headers } from 'next/headers';
 import { locales, type Locale } from '@/i18n';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
@@ -17,6 +18,8 @@ export default async function LocaleLayout({
   children: ReactNode;
   params: Promise<{ locale: string }>;
 }) {
+  const nonce = (await headers()).get('x-csp-nonce') ?? '';
+
   const { locale: localeParam } = await params;
   const locale = (locales as readonly string[]).includes(localeParam) ? (localeParam as Locale) : 'en';
   const session = await getServerSession(authOptions);
@@ -39,6 +42,8 @@ export default async function LocaleLayout({
   return (
     <html lang={locale} className={`${inter.variable} ${mono.variable}`} suppressHydrationWarning>
       <head>
+        {/* Expose nonce to client via meta for potential client-side libraries */}
+        <meta name="csp-nonce" content={nonce} />
         {/* Preconnect to critical origins (only when services are enabled) */}
         {process.env.NEXT_PUBLIC_SENTRY_DSN && (
           <link rel="preconnect" href="https://o0.ingest.sentry.io" crossOrigin="" />

@@ -40,12 +40,32 @@
   }
   ,
   "landing": {
-    "headline": "48h supplier CO₂ certificates, privacy-first",
-    "sub": "Auto-parse supplier invoices, issue audit-ready certificates, and attribute buyer Scope 3.1 — without exposing invoices.",
-    "primaryCta": "Run a Pilot",
-    "secondaryCta": "See demo",
-    "privacy": "Privacy by default",
-    "traceability": "Traceable evidence & factors",
-    "speed": "48-hour certificate"
+    "hero": {
+      "title": "48h supplier CO₂ certificates, privacy-first",
+      "subtitle": "Auto-parse supplier invoices, issue audit-ready certificates, and attribute buyer Scope 3.1 — without exposing invoices.",
+      "ctaPrimary": "Run a Pilot",
+      "ctaSecondary": "See demo"
+    },
+    "value": {
+      "eyebrow": "Why GreenMetrics",
+      "title": "Privacy-first certificates for procurement",
+      "subtitle": "Fast, auditable certificates backed by supplier evidence.",
+      "items": [
+        { "title": "Confidential by default", "desc": "Invoices stay encrypted and private; only certificates are shared." },
+        { "title": "Traceable", "desc": "Every certificate links back to invoice evidence and factors." },
+        { "title": "48h Certificates", "desc": "Fast issuance so procurement teams keep moving." }
+      ]
+    },
+    "sim": {
+      "eyebrow": "Estimate impact",
+      "title": "Try the simulator",
+      "subtitle": "Estimate attributed emissions for a purchase",
+      "labels": { "intensity": "Intensity (kg/unit)", "units": "Units" }
+    },
+    "testimonials": [
+      { "quote": "GreenMetrics reduced our supplier reporting burden by 80%", "author": "Jane Doe", "role": "Head of Procurement" },
+      { "quote": "Fast, private, and audit-ready certificates — highly recommended.", "author": "John Smith", "role": "Sustainability Manager" }
+    ],
+    "cta": { "demo": "Request demo" }
   }
 }

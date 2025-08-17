@@ -22,20 +22,14 @@ export async function generateMetadata(
   };
 }
 
-export default async function Home({ params }: { params: Promise<{ locale: string }> }) {
+export default async function Page({ params }: { params: Promise<{ locale: string }> }) {
   const { locale: localeParam } = await params;
   const locale = localeParam as Locale;
   const t = await getDict(locale, 'common');
-  const landing = (await getDict(locale, 'common'))?.landing || {};
+  const landing = t.landing || {};
 
   return (
-    <main className="space-y-8">
-      <a href="#main-content" className="sr-only focus:not-sr-only p-2">{t.ui?.skipToContent}</a>
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold">{t.navigation.home}</h2>
-        <LocaleSwitcher currentLocale={locale} />
-      </div>
-
+    <main id="main-content">
       <LandingClient landing={landing} />
     </main>
   );

@@ -40,12 +40,32 @@
   }
   ,
   "landing": {
-    "headline": "Certificats CO₂ fournisseurs en 48h — confidentialité par défaut",
-    "sub": "Analyse automatique des factures, émission de certificats auditables et attribution Scope 3.1 acheteur — sans partager les factures.",
-    "primaryCta": "Lancer un pilote",
-    "secondaryCta": "Voir la démo",
-    "privacy": "Confidentialité par défaut",
-    "traceability": "Preuves et facteurs traçables",
-    "speed": "Certificat en 48 heures"
+    "hero": {
+      "title": "Certificats CO₂ fournisseurs en 48h — confidentialité par défaut",
+      "subtitle": "Analyse automatique des factures, émission de certificats auditables et attribution Scope 3.1 acheteur — sans partager les factures.",
+      "ctaPrimary": "Lancer un pilote",
+      "ctaSecondary": "Voir la démo"
+    },
+    "value": {
+      "eyebrow": "Pourquoi GreenMetrics",
+      "title": "Certificats orientés confidentialité pour les achats",
+      "subtitle": "Des certificats rapides et auditables, garantis par des preuves fournisseur.",
+      "items": [
+        { "title": "Confidentialité par défaut", "desc": "Les factures restent chiffrées et privées ; seuls les certificats sont partagés." },
+        { "title": "Traçabilité", "desc": "Chaque certificat renvoie à des preuves et facteurs de factures." },
+        { "title": "Certificats en 48h", "desc": "Émission rapide pour que les équipes achats avancent." }
+      ]
+    },
+    "sim": {
+      "eyebrow": "Estimez l'impact",
+      "title": "Testez le simulateur",
+      "subtitle": "Estimez les émissions attribuées pour un achat",
+      "labels": { "intensity": "Intensité (kg/unité)", "units": "Unités" }
+    },
+    "testimonials": [
+      { "quote": "GreenMetrics a réduit notre charge de reporting fournisseurs de 80%", "author": "Jane Doe", "role": "Responsable Achats" },
+      { "quote": "Des certificats rapides, privés et prêts pour l'audit — fortement recommandé.", "author": "John Smith", "role": "Responsable RSE" }
+    ],
+    "cta": { "demo": "Demander une démo" }
   }
 }
