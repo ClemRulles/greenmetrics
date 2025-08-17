@@ -31,7 +31,8 @@ export function generateCSP(options: SecurityHeadersOptions = {}): string {
   const scriptSrc = [
     "'self'",
     ...(nonce ? [`'nonce-${nonce}'`] : []),
-    "'strict-dynamic'", // Allows scripts loaded by nonce to load other scripts
+    // Only include 'strict-dynamic' when a nonce is present
+    ...(nonce ? ["'strict-dynamic'"] : []),
     ...additionalScriptSrc
   ];
 
@@ -43,7 +44,7 @@ export function generateCSP(options: SecurityHeadersOptions = {}): string {
   // Connect sources for API calls and monitoring
   const connectSrc = [
     "'self'",
-    "https://o*.ingest.sentry.io", // Sentry error reporting
+    "https://*.ingest.sentry.io", // Sentry error reporting (fixed pattern)
     "https://app.posthog.com",     // PostHog analytics
     "https://*.posthog.com",       // PostHog CDN
     `https://${cdnHost}`,          // CDN host
@@ -54,6 +55,7 @@ export function generateCSP(options: SecurityHeadersOptions = {}): string {
   const imgSrc = [
     "'self'",
     "data:",
+    "blob:",
     "https:",
     `https://${cdnHost}`,
     ...additionalImgSrc
@@ -63,14 +65,14 @@ export function generateCSP(options: SecurityHeadersOptions = {}): string {
   const frameAncestors = allowFraming ? ["'self'", "https:"] : ["'none'"];
 
   const cspDirectives = [
-    `default-src 'self'`,
+  `default-src 'self'`,
     `base-uri 'self'`,
-    `script-src ${scriptSrc.join(' ')}`,
+  `script-src ${scriptSrc.join(' ')}`,
     `object-src 'none'`,
-    `style-src 'self' 'unsafe-inline'`, // Tailwind requires unsafe-inline
-    `img-src ${imgSrc.join(' ')}`,
-    `font-src 'self' data:`,
-    `connect-src ${connectSrc.join(' ')}`,
+  `style-src 'self' 'unsafe-inline'`, // Tailwind requires unsafe-inline in many setups
+  `img-src ${imgSrc.join(' ')}`,
+  `font-src 'self'`,
+  `connect-src ${connectSrc.join(' ')}`,
     `media-src 'self' data:`,
     `form-action 'self'`,
     `frame-ancestors ${frameAncestors.join(' ')}`,
@@ -184,6 +186,26 @@ export const ROUTE_SECURITY_CONFIGS = {
  * Generate nonce for CSP
  */
 export function generateNonce(): string {
+  // Prefer Web Crypto when available (Edge runtime / browser friendly)
+  try {
+    if (typeof globalThis !== 'undefined' && (globalThis as any).crypto && typeof (globalThis as any).crypto.getRandomValues === 'function') {
+      const arr = new Uint8Array(16);
+      (globalThis as any).crypto.getRandomValues(arr);
+      // Buffer may not be available in Edge runtime; use btoa when needed
+      if (typeof Buffer !== 'undefined') return (Buffer as any).from(arr).toString('base64');
+      // Fallback base64
+      let binary = '';
+      for (let i = 0; i < arr.length; i++) binary += String.fromCharCode(arr[i]);
+      // Use global Buffer if present, otherwise use btoa
+      if (typeof (globalThis as any).Buffer !== 'undefined') {
+        return (globalThis as any).Buffer.from(binary, 'binary').toString('base64');
+      }
+      return btoa(binary);
+    }
+  } catch (e) {
+    // ignore and fallback
+  }
+
   const crypto = require('crypto');
   return crypto.randomBytes(16).toString('base64');
 }
@@ -193,10 +215,11 @@ export function generateNonce(): string {
  */
 export function getRouteSecurityHeaders(
   routeType: keyof typeof ROUTE_SECURITY_CONFIGS,
-  nonce?: string
+  nonce?: string,
+  overrides: Partial<SecurityHeadersOptions> = {}
 ): Record<string, string> {
   const config = ROUTE_SECURITY_CONFIGS[routeType];
-  return getSecurityHeaders({ ...config, nonce } as SecurityHeadersOptions);
+  return getSecurityHeaders({ ...config, nonce, ...overrides } as SecurityHeadersOptions);
 }
 
 /**

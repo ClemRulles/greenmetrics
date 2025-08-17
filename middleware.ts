@@ -55,7 +55,10 @@ function getLocale(request: NextRequest): string {
 
 export default withAuth(
   function middleware(req) {
-    const pathname = req.nextUrl.pathname;
+  const pathname = req.nextUrl.pathname;
+  // Generate per-request CSP nonce and attach to response headers via NextResponse
+  const { generateNonce, getRouteSecurityHeaders } = require('./lib/http/headers');
+  const nonce = generateNonce();
     
     // Early return for static assets - don't process through auth/locale logic
     if (isPublicAsset(pathname)) {
@@ -71,7 +74,13 @@ export default withAuth(
     // Handle root redirect to default locale
     if (pathname === '/') {
       const locale = getLocale(req);
-      return NextResponse.redirect(new URL(`/${locale}`, req.url));
+      const res = NextResponse.redirect(new URL(`/${locale}`, req.url));
+      // Attach CSP headers for redirect response
+  const headers = getRouteSecurityHeaders('public', nonce as string) as Record<string, string>;
+  Object.entries(headers).forEach(([k, v]) => res.headers.set(k, String(v)));
+      // Expose nonce to the client via a header
+      res.headers.set('x-csp-nonce', nonce as string);
+      return res;
     }
     
     // Handle locale redirects for paths without locale prefix
@@ -81,8 +90,22 @@ export default withAuth(
     
     if (!hasLocale) {
       const locale = getLocale(req);
-      return NextResponse.redirect(new URL(`/${locale}${pathname}`, req.url));
+      const res = NextResponse.redirect(new URL(`/${locale}${pathname}`, req.url));
+  const headers = getRouteSecurityHeaders('public', nonce as string) as Record<string, string>;
+  Object.entries(headers).forEach(([k, v]) => res.headers.set(k, String(v)));
+      res.headers.set('x-csp-nonce', nonce as string);
+      return res;
     }
+    // Attach CSP headers to normal responses via a side-effect: we can't modify the final
+    // NextResponse from middleware once returned by downstream handlers, so we attach
+    // headers for this request here on a minimal next response and let downstream render
+    // replace it. For public pages we also include the nonce header so server components
+    // can pick it up via headers() when rendering.
+    const res = NextResponse.next();
+  const headers = getRouteSecurityHeaders('public', nonce as string) as Record<string, string>;
+  Object.entries(headers).forEach(([k, v]) => res.headers.set(k, String(v)));
+  res.headers.set('x-csp-nonce', String(nonce));
+    return res;
     
     return NextResponse.next();
   },

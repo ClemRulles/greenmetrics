@@ -36,22 +36,7 @@ const nextConfig = {
         { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
         { key: "Permissions-Policy", value: "geolocation=(), microphone=(), camera=()" },
         { key: "X-Cache-Status", value: "ORIGIN" }, // Debug header for cache troubleshooting
-        {
-          key: "Content-Security-Policy",
-          // Conservative CSP compatible with Next.js and Tailwind
-          value: [
-            "default-src 'self'",
-            "base-uri 'self'",
-            "frame-ancestors 'none'",
-            `img-src 'self' data: https: ${process.env.CDN_HOST || 'app.example.com'}`,
-            "style-src 'self' 'unsafe-inline'", // Tailwind injects styles
-            "script-src 'self'",
-            "connect-src 'self' https://o*.ingest.sentry.io https://app.posthog.com",
-            "font-src 'self' data:",
-            "object-src 'none'",
-            "upgrade-insecure-requests"
-          ].join("; ")
-        }
+  // Content-Security-Policy is applied per-request by middleware to support nonces
       ]
     },
     // Cache static assets aggressively
