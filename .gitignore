@@ -1,0 +1,5 @@
+node_modules/
+.next/
+e2e-report/
+test-results/
+.DS_Store
