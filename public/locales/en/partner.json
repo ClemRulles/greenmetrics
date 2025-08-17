@@ -1,0 +1,39 @@
+{
+  "title": "Partner Coverage",
+  "back": "Back",
+  "cards": {
+    "coverage": "Coverage",
+    "quality": "Data Quality Score",
+    "invited": "Invited",
+    "active": "Active"
+  },
+  "table": {
+    "supplier": "Supplier",
+    "spendShare": "Spend share",
+    "status": "Status",
+    "active": "Active",
+    "invited": "Invited",
+    "missing": "Missing",
+    "primary": "Primary",
+    "estimated": "Estimated",
+    "visibility": "Visibility"
+  },
+  "sim": {
+    "title": "Cost Simulator",
+    "basic": "Basic seats",
+    "pro": "Pro seats",
+    "monthly": "Monthly",
+    "annual": "Annual",
+    "discount": "Discount",
+    "total": "Total",
+    "perSeat": "per seat"
+  },
+  "metrics": {
+    "coveragePercent": "Coverage Percentage",
+    "dataQuality": "Data Quality Score",
+    "invitedSuppliers": "Invited Suppliers",
+    "activeSuppliers": "Active Suppliers",
+    "primaryData": "Primary Data",
+    "estimatedData": "Estimated Data"
+  }
+}

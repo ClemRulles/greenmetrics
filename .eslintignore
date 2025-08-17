@@ -1,0 +1,14 @@
+.next/
+node_modules/
+coverage/
+playwright-report/
+e2e/**/artifacts/
+public/
+prisma/**/migrations/
+dist/
+build/
+*.log
+.env
+.env.local
+.env.production
+.env.development

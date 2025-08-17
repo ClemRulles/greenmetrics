@@ -1,0 +1,15 @@
+import { Inter, JetBrains_Mono } from 'next/font/google';
+
+export const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-inter',
+  preload: true,
+});
+
+export const mono = JetBrains_Mono({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-mono',
+  preload: false, // Only preload primary font
+});

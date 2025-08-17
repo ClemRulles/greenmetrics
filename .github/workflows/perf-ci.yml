@@ -1,0 +1,107 @@
+name: Performance CI (Lighthouse)
+
+on:
+  pull_request:
+    paths: 
+      - 'app/**'
+      - 'components/**'
+      - 'public/**'
+      - 'lib/**'
+      - 'styles/**'
+      - '.lighthouserc.json'
+      - 'next.config.ts'
+      - 'package.json'
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with: 
+          node-version: 20
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Build application
+        run: npm run build
+        env:
+          # Disable analytics in CI builds
+          NEXT_PUBLIC_POSTHOG_HOST: ""
+          NEXT_PUBLIC_SENTRY_DSN: ""
+          
+      - name: Start server
+        run: |
+          npm start &
+          npx wait-on http://localhost:3000 --timeout 60000
+        env:
+          PORT: 3000
+          
+      - name: Run Lighthouse CI
+        run: npx @lhci/cli autorun --config=.lighthouserc.json
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+          
+      - name: Generate Performance Report
+        if: always()
+        run: |
+          echo "## 🚀 Performance Budget Results" > perf-report.md
+          echo "" >> perf-report.md
+          echo "### Core Web Vitals (Blocking)" >> perf-report.md
+          echo "- **LCP**: Must be ≤ 2.5s" >> perf-report.md  
+          echo "- **CLS**: Must be ≤ 0.1" >> perf-report.md
+          echo "" >> perf-report.md
+          echo "### Performance Score (Warning)" >> perf-report.md
+          echo "- **Target**: ≥ 90%" >> perf-report.md
+          echo "" >> perf-report.md
+          echo "### Pages Tested" >> perf-report.md
+          echo "- Home (EN): /en" >> perf-report.md
+          echo "- Home (FR): /fr" >> perf-report.md  
+          echo "- Partner Dashboard: /en/app/partner" >> perf-report.md
+          
+      - name: Comment PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            try {
+              const report = fs.readFileSync('perf-report.md', 'utf8');
+              let resultsText = "Lighthouse CI completed. Check logs for detailed results.";
+              
+              try {
+                const results = JSON.parse(fs.readFileSync('.lighthouseci/results.json', 'utf8'));
+                const summary = results.map(r => {
+                  const lcp = r.lhr.audits['largest-contentful-paint'].numericValue;
+                  const cls = r.lhr.audits['cumulative-layout-shift'].numericValue;
+                  const perf = Math.round(r.lhr.categories.performance.score * 100);
+                  
+                  const lcpStatus = lcp <= 2500 ? '✅' : '❌';
+                  const clsStatus = cls <= 0.1 ? '✅' : '❌';
+                  const perfStatus = perf >= 90 ? '✅' : '⚠️';
+                  
+                  return `**${r.url}**:
+                  - ${lcpStatus} LCP: ${Math.round(lcp)}ms (≤2500ms)
+                  - ${clsStatus} CLS: ${cls.toFixed(3)} (≤0.1)  
+                  - ${perfStatus} Performance: ${perf}/100 (≥90)`;
+                }).join('\n\n');
+                
+                resultsText = summary;
+              } catch (e) {
+                console.log('Could not parse results:', e.message);
+              }
+              
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `${report}\n\n### Results\n${resultsText}`
+              });
+            } catch (error) {
+              console.log('Could not post performance report:', error.message);
+            }

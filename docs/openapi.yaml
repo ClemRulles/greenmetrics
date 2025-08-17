@@ -1,0 +1,508 @@
+openapi: 3.0.3
+info:
+  title: GreenMetrics API (MVP)
+  version: 0.1.0
+  description: ESG reporting platform API for EU SMEs
+servers:
+  - url: https://app.greenmetrics.example/api/v1
+    description: Production server
+  - url: http://localhost:3000/api/v1
+    description: Development server
+
+components:
+  securitySchemes:
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: next-auth.session-token
+      description: NextAuth session cookie
+  
+  schemas:
+    Organization:
+      type: object
+      required: [id, name, country, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, maxLength: 100 }
+        country: { type: string, pattern: '^[A-Z]{2}$', description: 'ISO 3166-1 alpha-2 country code' }
+        industryNACE: { type: string, maxLength: 10, description: 'NACE industry classification code' }
+        createdAt: { type: string, format: date-time }
+      example:
+        id: '123e4567-e89b-12d3-a456-426614174000'
+        name: 'Green Solutions SAS'
+        country: 'FR'
+        industryNACE: '35.11'
+        createdAt: '2025-08-15T10:00:00Z'
+    
+    Report:
+      type: object
+      required: [id, organizationId, periodStart, periodEnd, status, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        organizationId: { type: string, format: uuid }
+        periodStart: { type: string, format: date }
+        periodEnd: { type: string, format: date }
+        status: { type: string, enum: [DRAFT, COMPLETED] }
+        createdBy: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+        pdfUrl: { type: string, format: uri, nullable: true }
+      example:
+        id: '456e7890-e89b-12d3-a456-426614174001'
+        organizationId: '123e4567-e89b-12d3-a456-426614174000'
+        periodStart: '2024-01-01'
+        periodEnd: '2024-12-31'
+        status: 'COMPLETED'
+        createdBy: '789e0123-e89b-12d3-a456-426614174002'
+        createdAt: '2025-08-15T10:30:00Z'
+        pdfUrl: 'https://storage.example.com/reports/456e7890.pdf'
+    
+    Metric:
+      type: object
+      required: [id, reportId, kind, unit, value]
+      properties:
+        id: { type: string, format: uuid }
+        reportId: { type: string, format: uuid }
+        kind: 
+          type: string
+          enum: [ELECTRICITY_KWH, FUEL_L, WASTE_TONNES, TRAVEL_KM, TRAINING_HOURS, WOMEN_PCT]
+        unit: { type: string, maxLength: 20 }
+        value: { type: number, minimum: 0 }
+        sourceNote: { type: string, maxLength: 500 }
+      example:
+        id: '789e0123-e89b-12d3-a456-426614174003'
+        reportId: '456e7890-e89b-12d3-a456-426614174001'
+        kind: 'ELECTRICITY_KWH'
+        unit: 'kWh'
+        value: 125000.5
+        sourceNote: 'Annual electricity consumption from utility bills'
+    
+    EmissionFactor:
+      type: object
+      required: [id, kind, unit, factorKgCO2ePerUnit, geography, source, validFrom, version]
+      properties:
+        id: { type: string, format: uuid }
+        kind: 
+          type: string
+          enum: [ELECTRICITY_KWH, FUEL_L, WASTE_TONNES, TRAVEL_KM, TRAINING_HOURS, WOMEN_PCT]
+        unit: { type: string, maxLength: 20 }
+        factorKgCO2ePerUnit: { type: number, minimum: 0 }
+        geography: { type: string, maxLength: 10, description: 'EU, FR, BE, etc.' }
+        source: { type: string, maxLength: 100, description: 'DEFRA, ADEME, etc.' }
+        validFrom: { type: string, format: date }
+        validTo: { type: string, format: date, nullable: true }
+        version: { type: string, maxLength: 20 }
+      example:
+        id: '012e3456-e89b-12d3-a456-426614174004'
+        kind: 'ELECTRICITY_KWH'
+        unit: 'kWh'
+        factorKgCO2ePerUnit: 0.057
+        geography: 'FR'
+        source: 'ADEME 2024'
+        validFrom: '2024-01-01'
+        validTo: '2024-12-31'
+        version: 'v2024.1'
+    
+    ComputationTrace:
+      type: object
+      required: [id, reportId, payloadJSON, factorsJSON, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        reportId: { type: string, format: uuid }
+        payloadJSON: { type: object, description: 'Input metrics snapshot' }
+        factorsJSON: { type: object, description: 'Emission factors used' }
+        createdAt: { type: string, format: date-time }
+      example:
+        id: '345e6789-e89b-12d3-a456-426614174005'
+        reportId: '456e7890-e89b-12d3-a456-426614174001'
+        payloadJSON: { 'ELECTRICITY_KWH': 125000.5 }
+        factorsJSON: { 'ELECTRICITY_KWH': { 'factor': 0.057, 'source': 'ADEME 2024' } }
+        createdAt: '2025-08-15T10:35:00Z'
+    
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string, format: uri }
+      example:
+        type: 'https://greenmetrics.example/problems/validation-error'
+        title: 'Validation Error'
+        status: 400
+        detail: 'The electricity consumption value must be positive'
+        instance: '/api/v1/reports/456e7890-e89b-12d3-a456-426614174001/metrics'
+
+security:
+  - sessionAuth: []
+
+paths:
+  /auth/session:
+    get:
+      summary: Get current session
+      tags: [Authentication]
+      responses:
+        '200': 
+          description: Current user session
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { type: object }
+                  expires: { type: string, format: date-time }
+        '401': { description: Unauthorized }
+  
+  /organizations:
+    post:
+      summary: Create organization
+      tags: [Organizations]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, country]
+              properties:
+                name: { type: string, maxLength: 100 }
+                country: { type: string, pattern: '^[A-Z]{2}$' }
+                industryNACE: { type: string, maxLength: 10 }
+            example:
+              name: 'Green Solutions SAS'
+              country: 'FR'
+              industryNACE: '35.11'
+      responses:
+        '201': 
+          description: Organization created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organization'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    get:
+      summary: List organizations (current user)
+      tags: [Organizations]
+      responses:
+        '200': 
+          description: List of organizations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Organization'
+  
+  /reports:
+    post:
+      summary: Create a report (draft)
+      tags: [Reports]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [organizationId, periodStart, periodEnd]
+              properties:
+                organizationId: { type: string, format: uuid }
+                periodStart: { type: string, format: date }
+                periodEnd: { type: string, format: date }
+            example:
+              organizationId: '123e4567-e89b-12d3-a456-426614174000'
+              periodStart: '2024-01-01'
+              periodEnd: '2024-12-31'
+      responses:
+        '201': 
+          description: Report created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Report'
+    get:
+      summary: List reports for an organization
+      tags: [Reports]
+      parameters:
+        - in: query
+          name: organizationId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': 
+          description: List of reports
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Report'
+  
+  /reports/{id}/metrics:
+    post:
+      summary: Add or replace activity metrics
+      tags: [Reports]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                metrics:
+                  type: array
+                  items:
+                    type: object
+                    required: [kind, unit, value]
+                    properties:
+                      kind:
+                        type: string
+                        enum: [ELECTRICITY_KWH, FUEL_L, WASTE_TONNES, TRAVEL_KM, TRAINING_HOURS, WOMEN_PCT]
+                      unit: { type: string }
+                      value: { type: number }
+                      sourceNote: { type: string }
+            example:
+              metrics:
+                - kind: 'ELECTRICITY_KWH'
+                  unit: 'kWh'
+                  value: 125000.5
+                  sourceNote: 'Annual consumption from utility bills'
+                - kind: 'FUEL_L'
+                  unit: 'L'
+                  value: 2500.0
+                  sourceNote: 'Diesel for company vehicles'
+      responses:
+        '200': 
+          description: Metrics updated
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Metric'
+  
+  /reports/{id}/compute:
+    post:
+      summary: Compute CO2e and persist computation trace
+      tags: [Reports]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': 
+          description: Computation completed
+          headers:
+            X-RateLimit-Limit:
+              description: The number of allowed requests in the current period
+              schema: { type: integer }
+            X-RateLimit-Remaining:
+              description: The number of remaining requests in the current period
+              schema: { type: integer }
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ComputationTrace'
+        '429':
+          description: Rate limit exceeded
+          headers:
+            X-RateLimit-Limit:
+              description: The number of allowed requests in the current period
+              schema: { type: integer }
+            X-RateLimit-Remaining:
+              description: The number of remaining requests in the current period (0)
+              schema: { type: integer }
+            Retry-After:
+              description: Number of seconds to wait before making another request
+              schema: { type: integer }
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                rateLimitEnglish:
+                  summary: Rate limit exceeded (English)
+                  value:
+                    type: 'https://greenmetrics.example/problems/rate-limit'
+                    title: 'Rate Limit Exceeded'
+                    status: 429
+                    detail: 'Maximum 3 report computations per hour exceeded. Please try again later.'
+                    instance: '/api/v1/reports/456e7890-e89b-12d3-a456-426614174001/compute'
+                rateLimitFrench:
+                  summary: Rate limit exceeded (French via ?locale=fr)
+                  value:
+                    type: 'https://greenmetrics.example/problems/rate-limit'
+                    title: 'Limite de Débit Dépassée'
+                    status: 429
+                    detail: 'Maximum de 3 calculs de rapports par heure dépassé. Veuillez réessayer plus tard.'
+                    instance: '/api/v1/reports/456e7890-e89b-12d3-a456-426614174001/compute'
+  
+  /reports/{id}/export:
+    post:
+      summary: Render PDF (locale-aware) and return signed URL
+      tags: [Reports]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+        - in: query
+          name: locale
+          schema: { type: string, enum: [en, fr], default: en }
+          description: 'Locale for PDF generation'
+          example: 'fr'
+      responses:
+        '200': 
+          description: PDF export ready
+          headers:
+            X-RateLimit-Limit:
+              description: The number of allowed requests in the current period
+              schema: { type: integer }
+            X-RateLimit-Remaining:
+              description: The number of remaining requests in the current period
+              schema: { type: integer }
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pdfUrl: { type: string, format: uri }
+                  expiresAt: { type: string, format: date-time }
+                  framework: { type: string, enum: [VSME_BASIC, VSME_COMPREHENSIVE, ESRS] }
+                  frameworkVersion: { type: string }
+                  factorsVersion: { type: string }
+                  language: { type: string, enum: [en, fr] }
+              examples:
+                exportEnglish:
+                  summary: PDF export response (English)
+                  value:
+                    pdfUrl: 'https://storage.example.com/exports/rpt-2024-ecotech-en.pdf'
+                    expiresAt: '2025-08-16T10:35:00Z'
+                    framework: 'VSME_BASIC'
+                    frameworkVersion: '1.0'
+                    factorsVersion: 'ADEME_BC_23.0'
+                    language: 'en'
+                exportFrench:
+                  summary: PDF export response (French)
+                  value:
+                    pdfUrl: 'https://storage.example.com/exports/rpt-2024-ecotech-fr.pdf'
+                    expiresAt: '2025-08-16T10:35:00Z'
+                    framework: 'VSME_BASIC'
+                    frameworkVersion: '1.0'
+                    factorsVersion: 'ADEME_BC_23.0'
+                    language: 'fr'
+        '429':
+          description: Rate limit exceeded
+          headers:
+            X-RateLimit-Limit:
+              description: The number of allowed requests in the current period
+              schema: { type: integer }
+            X-RateLimit-Remaining:
+              description: The number of remaining requests in the current period (0)
+              schema: { type: integer }
+            Retry-After:
+              description: Number of seconds to wait before making another request
+              schema: { type: integer }
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                rateLimitEnglish:
+                  summary: Rate limit exceeded (English)
+                  value:
+                    type: 'https://greenmetrics.example/problems/rate-limit'
+                    title: 'Rate Limit Exceeded'
+                    status: 429
+                    detail: 'Maximum 3 PDF exports per hour per organization exceeded. Please try again later.'
+                    instance: '/api/v1/reports/456e7890-e89b-12d3-a456-426614174001/export'
+                rateLimitFrench:
+                  summary: Rate limit exceeded (French via ?locale=fr)
+                  value:
+                    type: 'https://greenmetrics.example/problems/rate-limit'
+                    title: 'Limite de Débit Dépassée'
+                    status: 429
+                    detail: 'Maximum de 3 exports PDF par heure par organisation dépassé. Veuillez réessayer plus tard.'
+                    instance: '/api/v1/reports/456e7890-e89b-12d3-a456-426614174001/export'
+  
+  /factors:
+    get:
+      summary: List emission factors (paged)
+      tags: [Emission Factors]
+      parameters:
+        - in: query
+          name: kind
+          schema:
+            type: string
+            enum: [ELECTRICITY_KWH, FUEL_L, WASTE_TONNES, TRAVEL_KM, TRAINING_HOURS, WOMEN_PCT]
+        - in: query
+          name: geography
+          schema: { type: string }
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        '200': 
+          description: List of emission factors
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  factors:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EmissionFactor'
+                  pagination:
+                    type: object
+                    properties:
+                      page: { type: integer }
+                      limit: { type: integer }
+                      total: { type: integer }
+  
+  /dsr/requests:
+    post:
+      summary: Create DSR request (export/delete)
+      tags: [Data Subject Rights]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type]
+              properties:
+                type: { type: string, enum: [EXPORT, DELETE] }
+                organizationId: { type: string, format: uuid, description: 'Optional: scope to specific organization' }
+            example:
+              type: 'EXPORT'
+              organizationId: '123e4567-e89b-12d3-a456-426614174000'
+      responses:
+        '202': 
+          description: DSR request accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  requestId: { type: string, format: uuid }
+                  status: { type: string }
+                  estimatedCompletion: { type: string, format: date-time }
+              example:
+                requestId: '678e9012-e89b-12d3-a456-426614174006'
+                status: 'PROCESSING'
+                estimatedCompletion: '2025-08-16T10:35:00Z'

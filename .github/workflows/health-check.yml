@@ -1,0 +1,278 @@
+name: Health Check Validation
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Run health checks every 15 minutes
+    - cron: '*/15 * * * *'
+
+env:
+  NODE_ENV: test
+
+jobs:
+  health-validation:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Start application for health checks
+        run: |
+          npm run build
+          npm run start &
+          sleep 15
+          
+          # Wait for application to be ready
+          timeout 60 bash -c 'until curl -s http://localhost:3000/api/health; do sleep 2; done'
+        
+      - name: Validate health endpoint structure
+        run: |
+          response=$(curl -s http://localhost:3000/api/health)
+          echo "Health response: $response"
+          
+          # Validate JSON structure
+          echo "$response" | jq -e '.status' > /dev/null || exit 1
+          echo "$response" | jq -e '.timestamp' > /dev/null || exit 1
+          echo "$response" | jq -e '.checks' > /dev/null || exit 1
+          echo "$response" | jq -e '.checks.database' > /dev/null || exit 1
+          
+          # Validate status values
+          status=$(echo "$response" | jq -r '.status')
+          if [[ "$status" != "healthy" && "$status" != "degraded" && "$status" != "unhealthy" ]]; then
+            echo "Invalid status: $status"
+            exit 1
+          fi
+          
+          echo "✅ Health endpoint structure validated"
+      
+      - name: Validate health endpoint performance
+        run: |
+          # Test response time
+          start_time=$(date +%s%3N)
+          curl -s http://localhost:3000/api/health > /dev/null
+          end_time=$(date +%s%3N)
+          response_time=$((end_time - start_time))
+          
+          echo "Health endpoint response time: ${response_time}ms"
+          
+          if [ $response_time -gt 1000 ]; then
+            echo "❌ Health endpoint too slow: ${response_time}ms > 1000ms"
+            exit 1
+          fi
+          
+          echo "✅ Health endpoint performance validated"
+      
+      - name: Test database connectivity
+        run: |
+          response=$(curl -s http://localhost:3000/api/health)
+          db_status=$(echo "$response" | jq -r '.checks.database.status')
+          
+          if [ "$db_status" != "healthy" ]; then
+            echo "❌ Database health check failed: $db_status"
+            echo "$response" | jq '.checks.database'
+            exit 1
+          fi
+          
+          echo "✅ Database connectivity validated"
+      
+      - name: Validate metrics inclusion
+        run: |
+          response=$(curl -s http://localhost:3000/api/health)
+          
+          # Check if metrics are present
+          if echo "$response" | jq -e '.metrics' > /dev/null; then
+            echo "✅ Metrics found in health response"
+            echo "$response" | jq '.metrics'
+          else
+            echo "⚠️  Metrics not found in health response"
+          fi
+      
+      - name: Test health endpoint under load
+        run: |
+          echo "Testing health endpoint under concurrent load..."
+          
+          # Run 20 concurrent requests
+          for i in {1..20}; do
+            curl -s http://localhost:3000/api/health > /dev/null &
+          done
+          
+          wait
+          
+          # Verify endpoint still responds after load
+          response=$(curl -s http://localhost:3000/api/health)
+          status=$(echo "$response" | jq -r '.status')
+          
+          if [[ "$status" != "healthy" && "$status" != "degraded" ]]; then
+            echo "❌ Health endpoint failed under load"
+            exit 1
+          fi
+          
+          echo "✅ Health endpoint stable under load"
+      
+      - name: Stop application
+        run: killall node || true
+
+  synthetic-monitoring:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'push'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run synthetic uptime tests
+        run: |
+          # Install Playwright browsers
+          npx playwright install chromium
+          
+          # Run synthetic monitoring tests
+          npx playwright test e2e/synthetics/uptime.spec.ts --project=chromium-desktop
+      
+      - name: Run synthetic journey tests
+        run: |
+          npx playwright test e2e/synthetics/journeys.spec.ts --project=chromium-desktop --max-failures=3
+      
+      - name: Generate monitoring report
+        if: always()
+        run: |
+          echo "## 📊 Synthetic Monitoring Report" >> $GITHUB_STEP_SUMMARY
+          echo "**Date:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${GITHUB_REF_NAME}" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f "test-results/synthetic-results.json" ]; then
+            echo "**Test Results:** ✅ Available" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Test Results:** ❌ Not available" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  availability-check:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    
+    strategy:
+      matrix:
+        region: [us-east, eu-west, asia-pacific]
+    
+    steps:
+      - name: Check service availability from ${{ matrix.region }}
+        run: |
+          # Simulate regional checks (would use actual regional infrastructure)
+          SERVICE_URL="${{ secrets.PRODUCTION_URL || 'https://greenmetrics.vercel.app' }}"
+          
+          echo "Checking availability from ${{ matrix.region }}..."
+          
+          # Test homepage
+          response=$(curl -s -o /dev/null -w "%{http_code},%{time_total}" "$SERVICE_URL/en")
+          status_code=$(echo $response | cut -d',' -f1)
+          response_time=$(echo $response | cut -d',' -f2)
+          
+          echo "Homepage - Status: $status_code, Time: ${response_time}s"
+          
+          if [ "$status_code" != "200" ]; then
+            echo "❌ Homepage unavailable from ${{ matrix.region }}"
+            exit 1
+          fi
+          
+          # Test health endpoint
+          response=$(curl -s -o /dev/null -w "%{http_code},%{time_total}" "$SERVICE_URL/api/health")
+          status_code=$(echo $response | cut -d',' -f1)
+          response_time=$(echo $response | cut -d',' -f2)
+          
+          echo "Health endpoint - Status: $status_code, Time: ${response_time}s"
+          
+          if [ "$status_code" != "200" ]; then
+            echo "❌ Health endpoint unavailable from ${{ matrix.region }}"
+            exit 1
+          fi
+          
+          echo "✅ Service available from ${{ matrix.region }}"
+
+  performance-baseline:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build application
+        run: npm run build
+      
+      - name: Start application
+        run: |
+          npm run start &
+          sleep 15
+          timeout 60 bash -c 'until curl -s http://localhost:3000/api/health; do sleep 2; done'
+      
+      - name: Measure baseline performance
+        run: |
+          echo "## 🚀 Performance Baseline Report" >> performance-report.md
+          echo "**Date:** $(date -u)" >> performance-report.md
+          echo "" >> performance-report.md
+          
+          # Test key endpoints
+          endpoints=(
+            "/en"
+            "/api/health"
+            "/api/auth/session"
+          )
+          
+          for endpoint in "${endpoints[@]}"; do
+            echo "Testing $endpoint..."
+            
+            # Run 10 requests and calculate average
+            total_time=0
+            success_count=0
+            
+            for i in {1..10}; do
+              start_time=$(date +%s%3N)
+              status=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3000$endpoint")
+              end_time=$(date +%s%3N)
+              
+              if [ "$status" = "200" ] || [ "$status" = "401" ]; then
+                response_time=$((end_time - start_time))
+                total_time=$((total_time + response_time))
+                success_count=$((success_count + 1))
+              fi
+            done
+            
+            if [ $success_count -gt 0 ]; then
+              avg_time=$((total_time / success_count))
+              echo "- **$endpoint**: ${avg_time}ms average (${success_count}/10 successful)" >> performance-report.md
+            else
+              echo "- **$endpoint**: ❌ All requests failed" >> performance-report.md
+            fi
+          done
+          
+          # Upload as artifact
+          cat performance-report.md >> $GITHUB_STEP_SUMMARY
+      
+      - name: Stop application
+        run: killall node || true

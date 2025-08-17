@@ -1,0 +1,27 @@
+{
+  "title": "Data Sharing Settings",
+  "back": "Back",
+  "consent": {
+    "title": "Partner Data Sharing Consent",
+    "description": "Manage how your organization's data is shared with partner organizations. You can accept or reject sharing requests from partners.",
+    "noRequests": "No partner consent requests at this time",
+    "requestedAt": "Requested",
+    "status": {
+      "pending": "Pending",
+      "accepted": "Accepted", 
+      "rejected": "Rejected"
+    },
+    "actions": {
+      "accept": "Accept",
+      "reject": "Reject"
+    }
+  },
+  "policy": {
+    "title": "Privacy Policy",
+    "description": "Your data sharing preferences are governed by our privacy policy. Partners can only access aggregated data unless you explicitly grant detailed access."
+  },
+  "visibility": {
+    "detailed": "Detailed",
+    "aggregated": "Aggregated"
+  }
+}

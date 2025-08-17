@@ -1,0 +1,51 @@
+{
+  "common": {
+    "tagline": "Welcome to GreenMetrics"
+  },
+  "navigation": {
+    "home": "Home",
+    "dashboard": "Dashboard",
+    "reports": "Reports",
+    "settings": "Settings"
+  },
+  "auth": {
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "email": "Work email",
+    "linkSent": "Check your inbox — we just sent you a secure sign-in link.",
+    "signInHelp": "Use your work email to receive a magic link.",
+    "dashboard": "Your dashboard",
+    "signedInHint": "You are signed in. This area is protected."
+  },
+  "export": {
+    "compute": "Compute totals",
+    "downloadPdf": "Download PDF"
+  },
+  "ui": {
+    "theme": {
+      "toggle": "Toggle theme",
+      "light": "Switch to light mode",
+      "dark": "Switch to dark mode"
+    },
+    "themeToggle": "Toggle theme",
+    "skipToContent": "Skip to main content",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "close": "Close",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "edit": "Edit",
+    "delete": "Delete"
+  }
+  ,
+  "landing": {
+    "headline": "48h supplier CO₂ certificates, privacy-first",
+    "sub": "Auto-parse supplier invoices, issue audit-ready certificates, and attribute buyer Scope 3.1 — without exposing invoices.",
+    "primaryCta": "Run a Pilot",
+    "secondaryCta": "See demo",
+    "privacy": "Privacy by default",
+    "traceability": "Traceable evidence & factors",
+    "speed": "48-hour certificate"
+  }
+}

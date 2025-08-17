@@ -1,0 +1,161 @@
+---
+# GreenMetrics Prometheus Alert Rules
+# 
+# Service health and performance alerts for production monitoring.
+# Import these rules into your Prometheus deployment.
+
+groups:
+  - name: greenmetrics-service-health
+    rules:
+      # High error rate alert
+      - alert: HighErrorRate
+        expr: (
+          sum(rate(http_requests_total{status=~"5.."}[5m])) /
+          sum(rate(http_requests_total[5m]))
+        ) > 0.02
+        for: 5m
+        labels:
+          severity: critical
+          service: greenmetrics
+          alert_type: error_rate
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} over the last 5 minutes, which is above the 2% threshold"
+          runbook_url: "https://docs.greenmetrics.com/runbooks/high-error-rate"
+
+      # High latency alert
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_ms_bucket[10m])) by (le)) > 1500
+        for: 10m
+        labels:
+          severity: warning
+          service: greenmetrics
+          alert_type: latency
+        annotations:
+          summary: "High request latency detected"
+          description: "95th percentile latency is {{ $value }}ms over the last 10 minutes, which is above the 1.5s threshold"
+          runbook_url: "https://docs.greenmetrics.com/runbooks/high-latency"
+
+      # Database replication lag alert
+      - alert: DatabaseReplicationLag
+        expr: db_replication_lag_seconds > 180
+        for: 5m
+        labels:
+          severity: critical
+          service: greenmetrics
+          alert_type: replication_lag
+          component: database
+        annotations:
+          summary: "Database replication lag is high"
+          description: "Replication lag is {{ $value }}s, which exceeds the 3-minute threshold (RPO target: 5 minutes)"
+          runbook_url: "https://docs.greenmetrics.com/runbooks/replication-lag"
+
+      # Webhook failure rate alert
+      - alert: WebhookFailureRate
+        expr: rate(webhook_failures_total[5m]) > 0.167 # 10 failures per minute
+        for: 5m
+        labels:
+          severity: warning
+          service: greenmetrics
+          alert_type: webhook_failures
+          component: webhooks
+        annotations:
+          summary: "High webhook failure rate"
+          description: "Webhook failures are occurring at {{ $value | humanize }} failures per second"
+          runbook_url: "https://docs.greenmetrics.com/runbooks/webhook-failures"
+
+      # Rate limit saturation
+      - alert: RateLimitSaturation
+        expr: (
+          sum(rate(rate_limit_hits_total[5m])) /
+          sum(rate(http_requests_total[5m]))
+        ) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: greenmetrics
+          alert_type: rate_limit_saturation
+        annotations:
+          summary: "Rate limit saturation detected"
+          description: "Rate limit hit rate is {{ $value | humanizePercentage }}, indicating potential abuse or misconfiguration"
+          runbook_url: "https://docs.greenmetrics.com/runbooks/rate-limit-saturation"
+
+  - name: greenmetrics-business-metrics
+    rules:
+      # PDF export failure rate
+      - alert: PDFExportFailureRate
+        expr: (
+          sum(rate(pdf_exports_total{status="error"}[10m])) /
+          sum(rate(pdf_exports_total[10m]))
+        ) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+          service: greenmetrics
+          alert_type: pdf_export_failures
+          component: exports
+        annotations:
+          summary: "High PDF export failure rate"
+          description: "PDF export failure rate is {{ $value | humanizePercentage }} over the last 10 minutes"
+          runbook_url: "https://docs.greenmetrics.com/runbooks/pdf-export-failures"
+
+      # Billing entitlement denial spike
+      - alert: BillingEntitlementDenialSpike
+        expr: rate(billing_entitlement_denied_total[5m]) > 0.5 # 30 denials per minute
+        for: 5m
+        labels:
+          severity: warning
+          service: greenmetrics
+          alert_type: billing_denials
+          component: billing
+        annotations:
+          summary: "High billing entitlement denial rate"
+          description: "Billing entitlement denials are occurring at {{ $value | humanize }} denials per second"
+          runbook_url: "https://docs.greenmetrics.com/runbooks/billing-denials"
+
+  - name: greenmetrics-infrastructure
+    rules:
+      # Service availability
+      - alert: ServiceDown
+        expr: up{job="greenmetrics"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: greenmetrics
+          alert_type: service_down
+        annotations:
+          summary: "GreenMetrics service is down"
+          description: "The GreenMetrics service has been down for more than 1 minute"
+          runbook_url: "https://docs.greenmetrics.com/runbooks/service-down"
+
+      # Database connectivity
+      - alert: DatabaseConnectivityIssue
+        expr: greenmetrics_build_info unless on() (
+          sum(rate(http_requests_total{route="/api/ops/db/health", status="200"}[5m])) > 0
+        )
+        for: 3m
+        labels:
+          severity: critical
+          service: greenmetrics
+          alert_type: database_connectivity
+          component: database
+        annotations:
+          summary: "Database connectivity issues detected"
+          description: "Database health checks have not been successful for more than 3 minutes"
+          runbook_url: "https://docs.greenmetrics.com/runbooks/database-connectivity"
+
+      # Memory pressure (if available from system metrics)
+      - alert: HighMemoryUsage
+        expr: (
+          process_resident_memory_bytes / 
+          node_memory_MemTotal_bytes
+        ) > 0.85
+        for: 10m
+        labels:
+          severity: warning
+          service: greenmetrics
+          alert_type: memory_pressure
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is {{ $value | humanizePercentage }} of total available memory"
+          runbook_url: "https://docs.greenmetrics.com/runbooks/memory-pressure"

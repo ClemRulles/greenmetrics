@@ -1,0 +1,93 @@
+{
+  "title": "Billing & Usage",
+  "subtitle": "Manage your subscription and usage",
+  "currentPlan": "Current Plan",
+  "plan.free": "Free",
+  "plan.basic": "Basic", 
+  "plan.pro": "Pro",
+  "upgradeToPro": "Upgrade to Pro",
+  "upgradeToBasic": "Upgrade to Basic",
+  "openPortal": "Manage billing",
+  "usageSection": "Usage this period",
+  "usageReports": "Reports / month",
+  "usageExports": "Exports / hour", 
+  "usageApi": "API calls / day",
+  "usageStorage": "Storage (GB)",
+  "subscriptionStatus": "Status",
+  "status.active": "Active",
+  "status.trialing": "Trial",
+  "status.past_due": "Past due",
+  "status.canceled": "Canceled",
+  "status.incomplete": "Incomplete",
+  "status.unpaid": "Unpaid",
+  "banner.graceTitle": "Payment Issue",
+  "banner.grace": "Reduced limits active until {date}. Update your billing details to restore full access.",
+  "banner.frozenTitle": "Access Suspended",
+  "banner.frozen": "Your subscription is frozen due to payment issues. Update your payment method to restore access.",
+  "banner.updatePayment": "Update payment",
+  "planDescription.free": "Perfect for trying out GreenMetrics",
+  "planDescription.basic": "For growing businesses tracking emissions",
+  "planDescription.pro": "For enterprises with complex supply chains",
+  "perMonth": "per month",
+  "active": "Active",
+  "inactive": "Inactive",
+  "includedFeatures": "Included Features",
+  "reports": "Reports",
+  "suppliers": "Suppliers", 
+  "exports": "Exports",
+  "storage": "Storage",
+  "actions": "Actions",
+  "manageSubscription": "Manage Subscription",
+  "comparePlans": "Compare Plans",
+  "subscriptionCreated": "✅ Subscription created successfully!",
+  "subscriptionCanceled": "⚠️ Subscription canceled. You can try again anytime.",
+  "billingError": "Billing Error",
+  "unableToLoad": "Unable to load billing information.",
+  "plans": {
+    "free": {
+      "name": "Free",
+      "features": [
+        "Basic reporting",
+        "Community support",
+        "3 supplier links"
+      ]
+    },
+    "basic": {
+      "name": "Basic", 
+      "features": [
+        "PDF exports",
+        "Email support",
+        "25 supplier links",
+        "Partner targets"
+      ]
+    },
+    "pro": {
+      "name": "Pro",
+      "features": [
+        "Unlimited exports",
+        "Priority support", 
+        "200 supplier links",
+        "Advanced analytics"
+      ]
+    }
+  },
+  "usage": {
+    "reportsGenerated": "Reports generated this month",
+    "suppliersLinked": "Active supplier links",
+    "exportsRequested": "Exports this hour",
+    "storageUsed": "Storage used"
+  },
+  "entitlements": {
+    "targetsDisabled": "Partner targets require Basic plan or higher",
+    "proofVaultDisabled": "Proof vault requires Basic plan or higher",
+    "reportLimitExceeded": "Monthly report limit exceeded",
+    "supplierLimitExceeded": "Supplier link limit exceeded",
+    "exportLimitExceeded": "Hourly export limit exceeded",
+    "apiLimitExceeded": "Daily API call limit exceeded"
+  },
+  "billing": {
+    "noCustomer": "No billing customer found. Please create a subscription first.",
+    "subscriptionInactive": "Subscription inactive. Please update your payment method.",
+    "cannotDowngrade": "Cannot downgrade: current usage exceeds plan limits"
+  }
+}

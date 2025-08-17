@@ -1,0 +1,21 @@
+{
+  "wizard": {
+    "title": "Data Entry Wizard",
+    "step1": "Organization Setup",
+    "step2": "Activity Data",
+    "step3": "Review & Submit",
+    "electricity": "Electricity Consumption (kWh)",
+    "fuel": "Fuel Consumption (liters)",
+    "waste": "Waste Generated (tonnes)",
+    "travel": "Business Travel (km)",
+    "training": "Training Hours",
+    "womenPercent": "Women Percentage (%)",
+    "sourceNote": "Source Note (optional)",
+    "continue": "Continue",
+    "validation": {
+      "required": "This field is required",
+      "positive": "Value must be positive",
+      "invalidEmail": "Please enter a valid email"
+    }
+  }
+}

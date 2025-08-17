@@ -1,0 +1,9 @@
+{
+  "errors": {
+    "generic": "Une erreur inattendue s'est produite",
+    "unauthorized": "Vous n'êtes pas autorisé à effectuer cette action",
+    "notFound": "La ressource demandée n'a pas été trouvée",
+    "validation": "Veuillez vérifier votre saisie et réessayer",
+    "network": "Erreur réseau. Veuillez vérifier votre connexion."
+  }
+}

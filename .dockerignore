@@ -1,0 +1,51 @@
+# Docker ignore file to keep images lean
+.git
+.gitignore
+README.md
+docs/
+.next/cache
+.next/trace
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Testing
+coverage/
+.nyc_output
+__tests__/
+e2e/
+playwright-report/
+test-results/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# CI/CD
+.github/
+.dockerignore
+Dockerfile*
+docker-compose*
+
+# Build artifacts that aren't needed in container
+tsconfig.tsbuildinfo
+*.tgz
+*.tar.gz
+
+# Observability config (will be mounted or copied separately)
+observability/grafana/
+observability/alerts/

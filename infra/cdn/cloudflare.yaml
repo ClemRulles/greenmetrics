@@ -1,0 +1,317 @@
+# Cloudflare Zone Configuration for GreenMetrics
+# This file documents the required Cloudflare settings for optimal CDN performance
+
+zone_name: "example.com"
+proxied_dns_records:
+  - type: "A"
+    name: "app"
+    content: "YOUR_ORIGIN_IP"
+    proxied: true
+  - type: "AAAA" 
+    name: "app"
+    content: "YOUR_ORIGIN_IPV6"
+    proxied: true
+
+# SSL/TLS Configuration
+ssl_settings:
+  mode: "Full (strict)"
+  min_tls_version: "1.3"
+  opportunistic_encryption: true
+  tls_1_3: true
+  automatic_https_rewrites: true
+  always_use_https: true
+  hsts:
+    enabled: true
+    max_age: 31536000
+    include_subdomains: true
+    preload: true
+    no_sniff: true
+
+# Speed/Performance Settings
+speed_settings:
+  minify:
+    css: true
+    html: true
+    js: true
+  brotli: true
+  early_hints: true
+  http2: true
+  http3: true
+  ipv6: true
+  websockets: true
+  railgun: false # Not needed for small sites
+  mirage: true # Image optimization
+  polish: "lossless" # Image compression
+  webp: true
+  avif: true
+
+# Cache Rules (Page Rules or Cache Rules API)
+cache_rules:
+  # Static Assets - Immutable Long Cache
+  - name: "Static Assets"
+    expression: '(http.request.uri.path matches "^/_next/static/.*") or (http.request.uri.path matches "^/assets/.*") or (http.request.uri.path matches "^/fonts/.*") or (http.request.uri.path matches "^/images/.*") or (ends_with(http.request.uri.path, ".ico")) or (ends_with(http.request.uri.path, ".webmanifest"))'
+    actions:
+      cache:
+        cache_level: "cache_everything"
+        edge_ttl: 31536000 # 1 year
+        browser_ttl: 31536000 # 1 year
+      cache_key:
+        ignore_query_strings: true
+        custom_key:
+          query_string:
+            exclude: "*"
+          header:
+            include: ["accept-encoding"]
+      origin_cache_control: false
+      respect_strong_etags: true
+      
+  # Images - Long Cache with Format Negotiation  
+  - name: "Image Assets"
+    expression: '(http.request.uri.path matches "^/public/images/.*") or (ends_with(http.request.uri.path, ".jpg")) or (ends_with(http.request.uri.path, ".jpeg")) or (ends_with(http.request.uri.path, ".png")) or (ends_with(http.request.uri.path, ".gif")) or (ends_with(http.request.uri.path, ".webp")) or (ends_with(http.request.uri.path, ".avif"))'
+    actions:
+      cache:
+        cache_level: "cache_everything"
+        edge_ttl: 2592000 # 30 days
+        browser_ttl: 2592000 # 30 days
+      cache_key:
+        ignore_query_strings: false
+        custom_key:
+          query_string:
+            include: ["w", "q", "auto", "format"]
+          header:
+            include: ["accept", "accept-encoding"]
+      polish: "lossless"
+      webp: true
+      
+  # API Routes - No Cache (Respect Origin)
+  - name: "API Routes"
+    expression: 'starts_with(http.request.uri.path, "/api/")'
+    actions:
+      cache:
+        cache_level: "bypass"
+      disable_apps: true
+      
+  # Authentication Pages - No Cache
+  - name: "Auth Pages"
+    expression: '(starts_with(http.request.uri.path, "/auth/")) or (starts_with(http.request.uri.path, "/signin")) or (starts_with(http.request.uri.path, "/signout")) or (starts_with(http.request.uri.path, "/app/"))'
+    actions:
+      cache:
+        cache_level: "bypass"
+      disable_apps: true
+      
+  # Public Certificate Pages - Short Cache with Revalidation
+  - name: "Certificate Pages"
+    expression: 'starts_with(http.request.uri.path, "/certificate/")'
+    actions:
+      cache:
+        cache_level: "cache_everything"
+        edge_ttl: 3600 # 1 hour
+        browser_ttl: 0 # Let origin control
+      cache_key:
+        ignore_query_strings: false
+        custom_key:
+          query_string:
+            include: ["download", "format"]
+      respect_strong_etags: true
+      
+  # HTML Pages - Short Cache with SWR
+  - name: "HTML Pages"
+    expression: '(http.request.uri.path eq "/") or (starts_with(http.request.uri.path, "/en/")) or (starts_with(http.request.uri.path, "/fr/"))'
+    actions:
+      cache:
+        cache_level: "cache_everything"
+        edge_ttl: 1800 # 30 minutes
+        browser_ttl: 0 # Let origin control
+      cache_key:
+        ignore_query_strings: true
+        custom_key:
+          query_string:
+            exclude: "*"
+          header:
+            include: ["accept-language", "accept-encoding"]
+
+# Security Headers (Passthrough + Add)
+security_headers:
+  strict_transport_security:
+    enabled: true
+    max_age: 31536000
+    include_subdomains: true
+    preload: true
+  content_security_policy:
+    enabled: false # Let origin handle CSP
+  x_content_type_options: "nosniff"
+  x_frame_options: "DENY"
+  referrer_policy: "strict-origin-when-cross-origin"
+  permissions_policy: "geolocation=(), microphone=(), camera=()"
+
+# Bot Management (Disabled for now - will add in PR #34)
+bot_management:
+  enabled: true
+  fight_mode: true
+  session_score: true
+  javascript_detections:
+    enabled: true
+  static_resource_protection: false
+  
+  # Bot allowlist (verified good bots)
+  allowlist:
+    - user_agent: "Googlebot"
+      verified: true
+    - user_agent: "Bingbot" 
+      verified: true
+    - user_agent: "facebookexternalhit"
+      verified: true
+    - user_agent: "LinkedInBot"
+      verified: true
+    - user_agent: "Twitterbot"
+      verified: true
+    - user_agent: "UptimeRobot"
+      verified: false
+    - user_agent: "Pingdom"
+      verified: false
+    - user_agent: "StatusCake"
+      verified: false
+      
+  # Challenge suspicious bots on API routes
+  challenge_rules:
+    - name: "API Bot Challenge"
+      expression: 'starts_with(http.request.uri.path, "/api/") and cf.bot_management.score < 30'
+      action: "challenge"
+      
+    - name: "High Volume Challenge"
+      expression: 'cf.bot_management.score < 10'
+      action: "challenge"
+      
+# WAF (Disabled for now - will add in PR #34)  
+waf:
+  enabled: true
+  
+  # Managed WAF Rulesets
+  managed_rulesets:
+    - name: "Cloudflare Managed Ruleset"
+      enabled: true
+      mode: "simulate" # Start in simulate mode, then switch to block
+      
+    - name: "OWASP ModSecurity Core Rule Set"
+      enabled: true
+      mode: "simulate"
+      sensitivity: "medium"
+      
+    - name: "Cloudflare WordPress Ruleset"
+      enabled: false # Not WordPress
+      
+    - name: "Cloudflare Exposed Credentials Check"
+      enabled: true
+      mode: "block"
+      
+  # Custom WAF Rules
+  custom_rules:
+    - name: "Block SQL Injection Attempts"
+      expression: '(any(http.request.uri.query contains[*] {"union select", "drop table", "insert into", "delete from"}))'
+      action: "block"
+      
+    - name: "Block XSS Attempts"
+      expression: '(any(http.request.uri.query contains[*] {"<script", "javascript:", "onload=", "onerror="}))'
+      action: "block"
+      
+    - name: "Block Directory Traversal"
+      expression: '(contains(http.request.uri.path, "../") or contains(http.request.uri.path, "..\\"))'
+      action: "block"
+      
+    - name: "Block Common Attack Patterns"
+      expression: '(any(http.request.uri.query contains[*] {"wp-admin", "wp-login", "admin.php", "config.php"}))'
+      action: "block"
+      
+    - name: "Rate Limit API Endpoints - High"
+      expression: 'starts_with(http.request.uri.path, "/api/auth/") or starts_with(http.request.uri.path, "/api/reports/") and ends_with(http.request.uri.path, "/compute") or ends_with(http.request.uri.path, "/export")'
+      action: "challenge"
+      rate_limit:
+        threshold: 30
+        period: 60
+        mitigation_timeout: 300
+
+# Analytics
+analytics:
+  web_analytics: true
+  
+# Development Settings
+development:
+  development_mode: false
+  purge_cache_on_deploy: true
+  
+# Rate Limiting (Basic)
+rate_limiting:
+  # Protect auth endpoints
+  - name: "Auth Rate Limit - Strict"
+    expression: 'starts_with(http.request.uri.path, "/api/auth/")'
+    threshold: 5
+    period: 60
+    action: "block"
+    mitigation_timeout: 300
+    characteristics:
+      - "ip.src"
+    counting_expression: ""
+    
+  # Protect signin/signup pages
+  - name: "Auth Pages Rate Limit"
+    expression: '(starts_with(http.request.uri.path, "/auth/")) or (starts_with(http.request.uri.path, "/signin")) or (starts_with(http.request.uri.path, "/signup"))'
+    threshold: 10
+    period: 60
+    action: "challenge"
+    mitigation_timeout: 300
+    characteristics:
+      - "ip.src"
+      
+  # Protect compute-heavy API endpoints
+  - name: "Compute API Rate Limit"
+    expression: '(starts_with(http.request.uri.path, "/api/reports/") and (ends_with(http.request.uri.path, "/compute") or contains(http.request.uri.path, "/export")))'
+    threshold: 30
+    period: 60
+    action: "challenge"
+    mitigation_timeout: 300
+    characteristics:
+      - "ip.src"
+      - "http.request.headers[\"x-organization-id\"][0]"
+      
+  # General API protection
+  - name: "General API Rate Limit"
+    expression: '(starts_with(http.request.uri.path, "/api/") and not starts_with(http.request.uri.path, "/api/auth/") and not starts_with(http.request.uri.path, "/api/ops/"))'
+    threshold: 120
+    period: 60
+    action: "challenge"
+    mitigation_timeout: 120
+    characteristics:
+      - "ip.src"
+      
+  # Partner API (more generous for integrations)
+  - name: "Partner API Rate Limit"
+    expression: 'starts_with(http.request.uri.path, "/api/partner/")'
+    threshold: 200
+    period: 60
+    action: "challenge"
+    mitigation_timeout: 120
+    characteristics:
+      - "ip.src"
+      - "http.request.headers[\"authorization\"][0]"
+
+# Transform Rules (Add cache status headers)
+transform_rules:
+  - name: "Add Cache Status Headers"
+    expression: "true"
+    actions:
+      response_headers:
+        set:
+          "X-Cache-Status": "cf.cache_status"
+          "X-Cache-Ray": "cf.ray"
+          "X-Served-By": "cloudflare"
+
+# Custom Error Pages
+error_pages:
+  always_online: true
+  custom_pages:
+    - error_code: 503
+      url: "/error/503.html"
+    - error_code: 502  
+      url: "/error/502.html"
+    - error_code: 504
+      url: "/error/504.html"

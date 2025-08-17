@@ -1,0 +1,1017 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  EXPIRED
+}
+
+/**
+ * Users & Auth (NextAuth-ready; actual NextAuth config lands in PR #3)
+ */
+model User {
+  id            String       @id @default(cuid())
+  email         String       @unique
+  name          String?
+  image         String?
+  emailVerified DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  memberships   Membership[]
+  accounts      Account[]
+  sessions      Session[]
+  reports       Report[]
+  dsrRequests   DSRRequest[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+/**
+ * Organizations & RBAC
+ */
+model Organization {
+  id                     String                    @id @default(cuid())
+  name                   String
+  slug                   String                    @unique
+  description            String?
+  countryCode            String? // ISO-3166-1 alpha-2 (e.g., "BE")
+  createdAt              DateTime                  @default(now())
+  updatedAt              DateTime                  @updatedAt
+  memberships            Membership[]
+  reports                Report[]
+  factorOverrides        EmissionFactorOverride[]
+  invitations            Invitation[]
+  partnerLinks           PartnerSupplierLink[]     @relation("PartnerLinks")
+  supplierLinks          PartnerSupplierLink[]     @relation("SupplierLinks")
+  coverageSnapshots      CoverageSnapshot[]        @relation("CoverageSnapshots")
+  partnerSharingPolicy   PartnerSharingPolicy?
+  partnerConsents        SupplierConsent[]         @relation("PartnerConsentPartner")
+  supplierConsents       SupplierConsent[]         @relation("PartnerConsentSupplier")
+  certificates           Certificate[]
+  allocationSupplier     PartnerVolumeAllocation[] @relation("AllocationSupplier")
+  allocationPartner      PartnerVolumeAllocation[] @relation("AllocationPartner")
+  productionStats        ProductionStat[]
+  proofs                 Proof[]
+  attestations           Attestation[]
+  partnerTargets         PartnerTargets?
+  partnerTargetSnapshots PartnerTargetSnapshot[]
+  billingCustomer        BillingCustomer?
+  // PR #37 — Monthly Cadence Engine Relations
+  monthlyEmissions       MonthlyEmission[]
+  monthlyProduction      MonthlyProduction[]
+  buyerAttributions      BuyerAttributionMonthly[] @relation("BuyerAttributions")
+  supplierAttributions   BuyerAttributionMonthly[] @relation("SupplierAttributions")
+  dashboardSnapshots     DashboardSnapshot[]
+  cadenceJobs            CadenceJob[]
+
+  @@map("organizations")
+}
+
+model Membership {
+  id             String       @id @default(cuid())
+  role           Role
+  userId         String
+  organizationId String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@map("memberships")
+}
+
+model Report {
+  id               String       @id @default(cuid())
+  organizationId   String
+  name             String
+  periodStart      DateTime
+  periodEnd        DateTime
+  framework        String // e.g., "VSME-Basic"
+  frameworkVersion String // e.g., "VSME 2025.07"
+  language         String // "en" | "fr"
+  geography        String? // geography override (e.g., "BE")
+  createdByUserId  String
+  status           ReportStatus @default(DRAFT)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy      User                  @relation(fields: [createdByUserId], references: [id], onDelete: Restrict)
+  activities     ActivityRecord[]
+  exportAssets   ExportAsset[]
+  exportJobs     ExportJob[]
+  totalsSnapshot ReportTotalsSnapshot?
+  certificates   Certificate[]
+
+  @@index([organizationId, createdAt])
+  @@map("reports")
+}
+
+enum ReportStatus {
+  DRAFT
+  COMPLETED
+}
+
+model ActivityRecord {
+  id        String       @id @default(cuid())
+  reportId  String
+  kind      ActivityKind // ELECTRICITY_KWH | FUEL_L | WASTE_TONNES | TRAVEL_KM
+  unit      String // "kWh" | "L" | "t" | "km"
+  value     Decimal      @db.Decimal(20, 6)
+  note      String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  report Report             @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@map("activity_records")
+}
+
+enum ActivityKind {
+  ELECTRICITY_KWH
+  FUEL_L
+  WASTE_TONNES
+  TRAVEL_KM
+}
+
+model EmissionFactor {
+  id                  String       @id @default(cuid())
+  kind                ActivityKind
+  unit                String
+  factorKgCO2ePerUnit Decimal      @db.Decimal(20, 9)
+  geography           String // ISO-2/3 or "EU"
+  source              String // e.g., "EEA 2024", "ADEME Base Carbone 2024"
+  validFrom           DateTime
+  validTo             DateTime?
+  version             String // e.g., "v2024.1"
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  traces ComputationTrace[]
+
+  @@index([kind, geography, validFrom, validTo])
+  @@map("emission_factors")
+}
+
+model EmissionFactorSource {
+  id         String            @id @default(cuid())
+  name       String
+  url        String?
+  license    String?
+  importedAt DateTime          @default(now())
+  importJobs FactorImportJob[]
+
+  @@map("emission_factor_sources")
+}
+
+model FactorImportJob {
+  id          String               @id @default(cuid())
+  sourceId    String
+  version     String
+  status      String // "PENDING" | "COMPLETED" | "FAILED"
+  inserted    Int                  @default(0)
+  failed      Int                  @default(0)
+  createdAt   DateTime             @default(now())
+  completedAt DateTime?
+  source      EmissionFactorSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@map("factor_import_jobs")
+}
+
+model EmissionFactorOverride {
+  id                  String    @id @default(cuid())
+  organizationId      String
+  kind                String
+  unit                String
+  geography           String? // optional override geography; if null, inherits org country or report geo
+  validFrom           DateTime
+  validTo             DateTime?
+  factorKgCO2ePerUnit Decimal   @db.Decimal(20, 9)
+  version             String // e.g., "org-ovr-2025.01"
+  reason              String?
+  createdAt           DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, kind, validFrom])
+  @@map("emission_factor_overrides")
+}
+
+model ComputationTrace {
+  id                String          @id @default(cuid())
+  readingId         String
+  emissionFactorId  String
+  documentId        String?
+  pageNumber        Int?
+  computationType   ComputationType
+  intensity         Decimal?        @db.Decimal(20, 9) // kg CO2e per unit
+  attribution       Decimal?        @db.Decimal(20, 6) // tCO2e attributed
+  grade             QualityGrade
+  computedAt        DateTime        @default(now())
+  version           String
+  metadata          Json?           @default("{}")
+
+  reading        Reading        @relation(fields: [readingId], references: [id], onDelete: Cascade)
+  emissionFactor EmissionFactor @relation(fields: [emissionFactorId], references: [id])
+  document       Document?      @relation(fields: [documentId], references: [id])
+
+  @@index([readingId])
+  @@index([emissionFactorId])
+  @@index([documentId])
+  @@index([computationType, grade])
+  @@index([computedAt])
+  @@map("computation_traces")
+}
+
+/**
+ * Placeholders for future migrations:
+ * model Metric { ... }
+ * model ComputationTrace { ... }
+ */
+
+/**
+ * GDPR & Privacy
+ */
+enum DSRType {
+  EXPORT
+  DELETE
+}
+
+enum DSRStatus {
+  RECEIVED
+  COMPLETED
+  REJECTED
+}
+
+model DSRRequest {
+  id          String    @id @default(cuid())
+  userId      String
+  type        DSRType
+  status      DSRStatus @default(RECEIVED)
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+  reason      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type, createdAt])
+  @@map("dsr_requests")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  orgId     String?
+  action    String // e.g., "DSR_EXPORT", "DSR_DELETE", "RETENTION_PURGE", "EXPORT_DOWNLOAD"
+  targetId  String? // reportId, assetId, etc.
+  metadata  Json?
+  requestId String?
+  createdAt DateTime @default(now())
+
+  @@index([action, createdAt])
+  @@map("audit_logs")
+}
+
+model Invitation {
+  id         String           @id @default(cuid())
+  orgId      String
+  email      String
+  role       Role // OWNER|ADMIN|EDITOR|VIEWER (reuse enum)
+  token      String           @unique
+  status     InvitationStatus @default(PENDING)
+  expiresAt  DateTime
+  locale     String? // 'en' | 'fr'
+  createdBy  String
+  createdAt  DateTime         @default(now())
+  acceptedAt DateTime?
+  revokedAt  DateTime?
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, email, status])
+  @@map("invitations")
+}
+
+enum ExportStatus {
+  READY
+  FAILED
+}
+
+model ExportAsset {
+  id               String   @id @default(cuid())
+  reportId         String
+  hash             String   @unique
+  storageDriver    String // "local" | "s3"
+  storageKey       String // path or object key
+  contentType      String   @default("application/pdf")
+  bytes            Int
+  framework        String
+  frameworkVersion String
+  factorsVersion   String
+  language         String
+  engine           String // "mock" | "react-pdf"
+  createdAt        DateTime @default(now())
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId, createdAt])
+  @@map("export_assets")
+}
+
+model ExportJob {
+  id        String       @id @default(cuid())
+  reportId  String
+  status    ExportStatus @default(READY)
+  reason    String? // "user-request" | "content-changed" etc.
+  createdAt DateTime     @default(now())
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId, createdAt])
+  @@map("export_jobs")
+}
+
+model ReportTotalsSnapshot {
+  id               String   @id @default(cuid())
+  reportId         String   @unique
+  scope1Kg         Decimal  @db.Decimal(20, 9)
+  scope2Kg         Decimal  @db.Decimal(20, 9)
+  totalKg          Decimal  @db.Decimal(20, 9)
+  factorsVersion   String
+  frameworkVersion String
+  engine           String // "mock" | "react-pdf"
+  computedAt       DateTime @default(now())
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@map("report_totals_snapshots")
+}
+
+model PartnerSupplierLink {
+  id            String   @id @default(cuid())
+  partnerOrgId  String
+  supplierOrgId String
+  spendShare    Decimal  @db.Decimal(5, 4) // 0.0000..1.0000
+  critical      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  partner  Organization @relation("PartnerLinks", fields: [partnerOrgId], references: [id], onDelete: Cascade)
+  supplier Organization @relation("SupplierLinks", fields: [supplierOrgId], references: [id], onDelete: Cascade)
+
+  @@unique([partnerOrgId, supplierOrgId])
+  @@index([partnerOrgId])
+  @@map("partner_supplier_links")
+}
+
+enum SharingVisibility {
+  AGGREGATED
+  DETAILED
+}
+
+model PartnerSharingPolicy {
+  id                String            @id @default(cuid())
+  orgId             String            @unique
+  visibilityDefault SharingVisibility @default(AGGREGATED)
+  consentRequired   Boolean           @default(true)
+  termsVersion      String            @default("v1")
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@map("partner_sharing_policies")
+}
+
+enum ConsentStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+model SupplierConsent {
+  id            String        @id @default(cuid())
+  partnerOrgId  String
+  supplierOrgId String
+  status        ConsentStatus @default(PENDING)
+  policyVersion String
+  grantedAt     DateTime?
+  revokedAt     DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  partnerOrg  Organization @relation("PartnerConsentPartner", fields: [partnerOrgId], references: [id], onDelete: Cascade)
+  supplierOrg Organization @relation("PartnerConsentSupplier", fields: [supplierOrgId], references: [id], onDelete: Cascade)
+
+  @@unique([partnerOrgId, supplierOrgId])
+  @@index([partnerOrgId])
+  @@map("supplier_consents")
+}
+
+model CoverageSnapshot {
+  id            String   @id @default(cuid())
+  orgId         String
+  at            DateTime @default(now())
+  invited       Int
+  active        Int
+  primaryData   Int
+  estimatedData Int
+  score         Int
+  createdAt     DateTime @default(now())
+
+  organization Organization @relation("CoverageSnapshots", fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, at])
+  @@map("coverage_snapshots")
+}
+
+model Certificate {
+  id                 String    @id @default(cuid())
+  publicId           String    @unique
+  reportId           String? // Link to source report
+  supplierOrgId      String
+  periodStart        DateTime
+  periodEnd          DateTime
+  scope1Kg           Decimal   @db.Decimal(18, 3)
+  scope2LBKg         Decimal   @db.Decimal(18, 3)
+  scope2MBKg         Decimal   @db.Decimal(18, 3)
+  intensityPerUnitKg Decimal   @db.Decimal(18, 6)
+  unitLabel          String
+  units              Decimal   @db.Decimal(18, 3) // Production volume
+  factorsVersion     String
+  frameworkVersion   String
+  qualityGrade       String // 'A' | 'B' | 'C'
+  signature          String // HMAC of core fields
+  qrCode             String    @db.Text // QR code data URL
+  issuedAt           DateTime  @default(now())
+  revokedAt          DateTime?
+
+  supplier Organization @relation(fields: [supplierOrgId], references: [id], onDelete: Cascade)
+  report   Report?      @relation(fields: [reportId], references: [id], onDelete: SetNull)
+
+  @@index([supplierOrgId, periodStart, periodEnd])
+  @@index([reportId])
+  @@map("certificates")
+}
+
+model PartnerVolumeAllocation {
+  id            String   @id @default(cuid())
+  supplierOrgId String
+  partnerOrgId  String
+  year          Int
+  units         Decimal? @db.Decimal(18, 3)
+  sharePct      Decimal? @db.Decimal(5, 4) // 0..1 (optional alternative)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  supplier Organization @relation("AllocationSupplier", fields: [supplierOrgId], references: [id], onDelete: Cascade)
+  partner  Organization @relation("AllocationPartner", fields: [partnerOrgId], references: [id], onDelete: Cascade)
+
+  @@unique([supplierOrgId, partnerOrgId, year])
+  @@index([partnerOrgId, year])
+  @@map("partner_volume_allocations")
+}
+
+model ProductionStat {
+  id             String   @id @default(cuid())
+  organizationId String
+  year           Int
+  units          Decimal  @db.Decimal(18, 3)
+  unitLabel      String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, year])
+  @@index([organizationId, year])
+  @@map("production_stats")
+}
+
+enum ProofKind {
+  ELECTRICITY_BILL
+  GAS_BILL
+  FUEL_INVOICE
+  OTHER
+}
+
+model Proof {
+  id             String    @id @default(cuid())
+  organizationId String
+  kind           ProofKind
+  filename       String
+  mimeType       String
+  sizeBytes      Int
+  sha256Hex      String    @db.VarChar(64)
+  periodStart    DateTime
+  periodEnd      DateTime
+  storedAt       String // storage key/path
+  createdAt      DateTime  @default(now())
+  createdBy      String // userId
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, sha256Hex]) // de-dupe same file
+  @@index([organizationId, periodStart, periodEnd])
+  @@index([organizationId, kind])
+  @@map("proofs")
+}
+
+model Attestation {
+  id             String   @id @default(cuid())
+  organizationId String
+  statement      String
+  agreedAt       DateTime @default(now())
+  agreedBy       String // userId
+  agreedIp       String?
+  periodYear     Int
+  certificateId  String? // optional link
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, periodYear])
+  @@map("attestations")
+}
+
+model PartnerTargets {
+  id             String   @id @default(cuid())
+  organizationId String   @unique
+  coveragePct    Int // 0..100 target coverage
+  dqsMin         String // "A" | "B" | "C"
+  targetTons     Float // attributed tCO2e target (<= baseline)
+  baselineYear   Int
+  updatedAt      DateTime @default(now()) @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("partner_targets")
+}
+
+model PartnerTargetSnapshot {
+  id             String   @id @default(cuid())
+  organizationId String
+  atUtc          DateTime @default(now())
+  coveragePct    Float
+  dqsAvg         Float
+  attributedTons Float
+  deltaTons      Float
+  onTrack        Boolean
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, atUtc])
+  @@map("partner_target_snapshots")
+}
+
+/**
+ * Billing & Subscriptions (PR #22)
+ */
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  UNPAID
+  INCOMPLETE
+  INCOMPLETE_EXPIRED
+  TRIALING
+}
+
+enum PlanType {
+  FREE
+  BASIC
+  PRO
+}
+
+model BillingCustomer {
+  id               String   @id @default(cuid())
+  organizationId   String   @unique
+  stripeCustomerId String   @unique
+  email            String?
+  name             String?
+  countryCode      String? // EU compliance - customer country
+  vatId            String? // EU VAT number (optional)
+  address          Json? // Stripe address object
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  subscriptions  Subscription[]
+  usageSnapshots UsageSnapshot[]
+
+  @@map("billing_customers")
+}
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  customerId           String
+  stripeSubscriptionId String             @unique
+  stripePriceId        String
+  status               SubscriptionStatus @default(INCOMPLETE)
+  planType             PlanType           @default(FREE)
+  currentPeriodStart   DateTime
+  currentPeriodEnd     DateTime
+  cancelAtPeriodEnd    Boolean            @default(false)
+  canceledAt           DateTime?
+  endedAt              DateTime?
+  trialStart           DateTime?
+  trialEnd             DateTime?
+  quantity             Int                @default(1) // for seat-based billing
+  inGracePeriod        Boolean            @default(false)
+  gracePeriodEnd       DateTime?
+  frozenAt             DateTime? // when features were frozen due to payment failure
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  customer     BillingCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  entitlements Entitlement[]
+
+  @@index([customerId, status])
+  @@map("subscriptions")
+}
+
+model Entitlement {
+  id             String   @id @default(cuid())
+  subscriptionId String
+  feature        String // "TARGETS", "PROOF_VAULT", etc.
+  limit          Int? // null = unlimited
+  used           Int      @default(0)
+  resetAt        DateTime // when usage counter resets
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@unique([subscriptionId, feature])
+  @@map("entitlements")
+}
+
+model UsageSnapshot {
+  id               String   @id @default(cuid())
+  customerId       String
+  periodKey        String // "2025-08" for monthly billing periods
+  reportsGenerated Int      @default(0)
+  exportsRequested Int      @default(0)
+  apiCalls         Int      @default(0)
+  storageUsedBytes BigInt   @default(0)
+  currentSeats     Int      @default(0) // current seat count
+  peakSeats        Int      @default(0) // peak seats this period (for billing)
+  snapshotAt       DateTime @default(now())
+
+  customer BillingCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, periodKey])
+  @@index([customerId, snapshotAt])
+  @@map("usage_snapshots")
+}
+
+model StripeEventLog {
+  id          String   @id @default(cuid())
+  eventId     String   @unique
+  type        String
+  processedAt DateTime @default(now())
+  raw         Json?
+
+  @@index([eventId])
+  @@map("stripe_event_logs")
+}
+
+/**
+ * Data Ingestion Models (PR #36)
+ */
+enum DocumentSource {
+  CSV
+  EMAIL
+  DRIVE
+}
+
+enum DocumentStatus {
+  PENDING
+  PARSING
+  COMPLETED
+  FAILED
+}
+
+enum MeterType {
+  ELECTRICITY
+  GAS
+  FUEL
+}
+
+model Document {
+  id          String         @id @default(cuid())
+  supplierId  String
+  source      DocumentSource
+  sha256      String         @unique // content + supplierId + invoiceNo + periodMonth hash
+  invoiceNo   String?
+  periodStart DateTime
+  periodEnd   DateTime
+  meterType   MeterType
+  unit        String
+  pages       Json           @default("[]") // array of page references
+  storageKey  String // encrypted storage location
+  parsedAt    DateTime?
+  status      DocumentStatus @default(PENDING)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  readings Reading[]
+  computationTraces ComputationTrace[]
+  proofDocuments ProofDocument[]
+
+  @@index([supplierId, source])
+  @@index([status, createdAt])
+  @@index([sha256])
+  @@map("documents")
+}
+
+model Reading {
+  id         String   @id @default(cuid())
+  documentId String
+  siteId     String
+  month      DateTime // normalized to first day of month
+  unit       String
+  value      Decimal  @db.Decimal(20, 6)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  computationTraces ComputationTrace[]
+
+  @@index([documentId])
+  @@index([siteId, month])
+  @@index([month, unit])
+  @@map("readings")
+}
+
+/**
+ * Computation Enhancement Models (PR #37)
+ */
+enum ComputationType {
+  LB // Location-Based
+  MB // Market-Based
+}
+
+enum QualityGrade {
+  A // Exact (SKU/family) + proofs
+  B // Site + reliable production
+  C // Estimated (fallback, missing docs)
+}
+
+enum IntensityLevel {
+  SITE
+  FAMILY
+}
+
+model IntensityRecord {
+  id              String        @id @default(cuid())
+  siteId          String?
+  familyId        String?
+  level           IntensityLevel
+  periodStart     DateTime
+  periodEnd       DateTime
+  scope1Emissions Decimal       @db.Decimal(20, 6) // tCO2e
+  scope2Emissions Decimal       @db.Decimal(20, 6) // tCO2e
+  unitsProduced   Decimal       @db.Decimal(20, 6)
+  intensity       Decimal       @db.Decimal(20, 9) // kg CO2e per unit
+  grade           QualityGrade
+  supportingDocs  Json          @default("[]") // array of document IDs
+  computedAt      DateTime      @default(now())
+  version         String
+  metadata        Json?         @default("{}")
+
+  @@unique([siteId, familyId, level, periodStart, periodEnd])
+  @@index([siteId, periodStart])
+  @@index([familyId, periodStart])
+  @@index([level, grade])
+  @@index([computedAt])
+  @@map("intensity_records")
+}
+
+model RecomputationJob {
+  id          String   @id @default(cuid())
+  triggerType String   // 'data_correction', 'new_factor', 'document_update'
+  entityType  String   // 'reading', 'site', 'family', 'report'
+  entityId    String
+  status      String   @default("pending") // pending, running, completed, failed
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+  duration    Int?     // milliseconds
+  affectedIds Json     @default("[]") // IDs of affected records
+  errors      Json?    @default("[]") // any errors encountered
+  metadata    Json?    @default("{}")
+
+  @@index([status, startedAt])
+  @@index([entityType, entityId])
+  @@index([triggerType])
+  @@map("recomputation_jobs")
+}
+
+model ProofDocument {
+  id           String   @id @default(cuid())
+  documentId   String
+  proofType    String   // 'GO_certificate', 'PPA_contract', 'renewable_evidence'
+  validFrom    DateTime
+  validTo      DateTime
+  renewable    Boolean  @default(false)
+  marketBased  Boolean  @default(false)
+  verified     Boolean  @default(false)
+  verifiedAt   DateTime?
+  verifiedBy   String?
+  metadata     Json?    @default("{}")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([proofType, verified])
+  @@index([validFrom, validTo])
+  @@index([renewable, marketBased])
+  @@map("proof_documents")
+}
+
+/**
+ * PR #37 — Monthly Cadence Engine: Snapshot Models for Month Close & Dashboard
+ */
+
+enum CadenceStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model MonthlyEmission {
+  id               String   @id @default(cuid())
+  organizationId   String
+  monthPeriod      String   // "2025-08" for August 2025
+  scope1Total      Decimal  @db.Decimal(15, 4) // tCO₂e
+  scope2Total      Decimal  @db.Decimal(15, 4) // tCO₂e
+  totalEmissions   Decimal  @db.Decimal(15, 4) // scope1 + scope2
+  qualityGrade     QualityGrade
+  isEstimated      Boolean  @default(false) // true for Grade C estimates
+  estimationMethod String?  // "last_known_intensity", "revenue_heuristic", etc.
+  dataCompleteness Decimal  @db.Decimal(5, 2) // 0-100 percentage
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, monthPeriod])
+  @@index([monthPeriod])
+  @@index([qualityGrade, isEstimated])
+  @@map("monthly_emissions")
+}
+
+model MonthlyProduction {
+  id               String   @id @default(cuid())
+  organizationId   String
+  monthPeriod      String   // "2025-08" for August 2025
+  productFamily    String
+  productionVolume Decimal  @db.Decimal(15, 4)
+  productionUnit   String   // "units", "kg", "m³", etc.
+  intensity        Decimal? @db.Decimal(15, 8) // kgCO₂e per unit
+  intensityLevel   IntensityLevel
+  qualityGrade     QualityGrade
+  isEstimated      Boolean  @default(false)
+  estimationMethod String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, monthPeriod, productFamily])
+  @@index([monthPeriod, productFamily])
+  @@index([qualityGrade, isEstimated])
+  @@map("monthly_production")
+}
+
+model BuyerAttributionMonthly {
+  id                 String   @id @default(cuid())
+  buyerOrgId         String
+  supplierOrgId      String
+  monthPeriod        String   // "2025-08" for August 2025
+  productFamily      String
+  purchasedVolume    Decimal  @db.Decimal(15, 4)
+  attributedEmissions Decimal @db.Decimal(15, 4) // tCO₂e
+  attributionMethod  String   // "supplier_specific", "family_average", "industry_average"
+  confidenceScore    Decimal  @db.Decimal(5, 2) // 0-100
+  qualityGrade       QualityGrade
+  isEstimated        Boolean  @default(false)
+  estimationMethod   String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  buyerOrg     Organization @relation("BuyerAttributions", fields: [buyerOrgId], references: [id], onDelete: Cascade)
+  supplierOrg  Organization @relation("SupplierAttributions", fields: [supplierOrgId], references: [id], onDelete: Cascade)
+
+  @@unique([buyerOrgId, supplierOrgId, monthPeriod, productFamily])
+  @@index([monthPeriod, productFamily])
+  @@index([qualityGrade, isEstimated])
+  @@map("buyer_attribution_monthly")
+}
+
+model DashboardSnapshot {
+  id                     String   @id @default(cuid())
+  organizationId         String
+  monthPeriod            String   // "2025-08" for August 2025
+  totalEmissions         Decimal  @db.Decimal(15, 4) // tCO₂e
+  scope1Emissions        Decimal  @db.Decimal(15, 4)
+  scope2Emissions        Decimal  @db.Decimal(15, 4)
+  scope3Emissions        Decimal? @db.Decimal(15, 4) // future scope 3
+  avgQualityGrade        String   // "A", "B", "C", "MIXED"
+  dataCompleteness       Decimal  @db.Decimal(5, 2) // 0-100 percentage
+  estimatedPercentage    Decimal  @db.Decimal(5, 2) // 0-100 percentage of estimated vs real data
+  ytdEmissions           Decimal  @db.Decimal(15, 4) // year-to-date cumulative
+  trailing12Months       Decimal  @db.Decimal(15, 4) // rolling 12-month total
+  vsTargetStatus         String   // "OK", "WATCH", "OFF_TRACK"
+  vsTargetPercentage     Decimal? @db.Decimal(5, 2) // percentage vs annual target
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, monthPeriod])
+  @@index([monthPeriod])
+  @@index([vsTargetStatus])
+  @@map("dashboard_snapshots")
+}
+
+model CadenceJob {
+  id               String        @id @default(cuid())
+  jobType          String        // "monthly_close", "backfill", "regeneration"
+  monthPeriod      String        // "2025-08" for August 2025
+  status           CadenceStatus @default(PENDING)
+  organizationId   String?       // null for global jobs
+  affectedCount    Int           @default(0) // number of records processed
+  errorCount       Int           @default(0)
+  processingTimeMs Int?          // execution time in milliseconds
+  errorDetails     Json?         // error information for failed jobs
+  metadata         Json?         // job-specific metadata
+  startedAt        DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([jobType, status])
+  @@index([monthPeriod, status])
+  @@index([organizationId, jobType])
+  @@map("cadence_jobs")
+}

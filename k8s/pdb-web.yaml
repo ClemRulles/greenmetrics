@@ -1,0 +1,15 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: greenmetrics-web-pdb
+  namespace: greenmetrics
+  labels:
+    app.kubernetes.io/name: greenmetrics
+    app.kubernetes.io/component: web-pdb
+    app.kubernetes.io/instance: production
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: greenmetrics
+      app.kubernetes.io/component: web

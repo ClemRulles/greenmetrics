@@ -1,0 +1,266 @@
+name: CDN Performance Check
+
+on:
+  pull_request:
+    branches: [main, develop]
+  deployment_status:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Base URL to test'
+        required: true
+        default: 'https://greenmetrics-preview.vercel.app'
+      verify_cache:
+        description: 'Verify cache hits'
+        required: false
+        default: 'true'
+        type: boolean
+
+jobs:
+  cdn-performance:
+    name: CDN & Performance Check
+    runs-on: ubuntu-latest
+    if: github.event.deployment_status.state == 'success' || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Get deployment URL
+        id: deployment
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "url=${{ github.event.inputs.base_url }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" = "deployment_status" ]; then
+            echo "url=${{ github.event.deployment_status.target_url }}" >> $GITHUB_OUTPUT
+          else
+            # For PR, construct preview URL (adjust pattern for your deployment)
+            PR_NUMBER=$(jq --raw-output .pull_request.number "$GITHUB_EVENT_PATH")
+            echo "url=https://greenmetrics-pr-${PR_NUMBER}.vercel.app" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Wait for deployment
+        run: |
+          echo "🕐 Waiting for deployment to be ready..."
+          for i in {1..30}; do
+            if curl -f -s "${{ steps.deployment.outputs.url }}/api/ops/health" > /dev/null; then
+              echo "✅ Deployment is ready"
+              break
+            fi
+            echo "⏳ Attempt $i/30 - waiting 10s..."
+            sleep 10
+          done
+          
+      - name: Warm CDN Cache
+        id: warm-cache
+        run: |
+          echo "🔥 Warming CDN cache..."
+          VERIFY_FLAG=""
+          if [ "${{ github.event.inputs.verify_cache }}" = "true" ] || [ "${{ github.event.inputs.verify_cache }}" = "" ]; then
+            VERIFY_FLAG="--verify"
+          fi
+          
+          npx tsx scripts/warm-cache.ts \
+            --base "${{ steps.deployment.outputs.url }}" \
+            --concurrency 3 \
+            --timeout 15000 \
+            $VERIFY_FLAG
+            
+      - name: Install Lighthouse CI
+        run: npm install -g @lhci/cli@0.12.x
+        
+      - name: Run Lighthouse Performance Audit
+        id: lighthouse
+        run: |
+          echo "🔍 Running Lighthouse performance audit..."
+          
+          # Create LHCI config for this run
+          cat > .lighthouserc.temp.json << EOF
+          {
+            "ci": {
+              "collect": {
+                "url": [
+                  "${{ steps.deployment.outputs.url }}/",
+                  "${{ steps.deployment.outputs.url }}/en",
+                  "${{ steps.deployment.outputs.url }}/fr",
+                  "${{ steps.deployment.outputs.url }}/en/about"
+                ],
+                "numberOfRuns": 3,
+                "settings": {
+                  "preset": "desktop",
+                  "throttling": {
+                    "rttMs": 40,
+                    "throughputKbps": 10240,
+                    "cpuSlowdownMultiplier": 1
+                  },
+                  "chromeFlags": [
+                    "--headless",
+                    "--no-sandbox",
+                    "--disable-dev-shm-usage"
+                  ]
+                }
+              },
+              "assert": {
+                "assertions": {
+                  "categories:performance": ["error", {"minScore": 0.8}],
+                  "categories:accessibility": ["error", {"minScore": 0.9}],
+                  "categories:best-practices": ["error", {"minScore": 0.9}],
+                  "categories:seo": ["error", {"minScore": 0.9}],
+                  "first-contentful-paint": ["error", {"maxNumericValue": 2000}],
+                  "largest-contentful-paint": ["error", {"maxNumericValue": 2500}],
+                  "cumulative-layout-shift": ["error", {"maxNumericValue": 0.1}],
+                  "total-blocking-time": ["error", {"maxNumericValue": 300}]
+                }
+              },
+              "upload": {
+                "target": "temporary-public-storage"
+              }
+            }
+          }
+          EOF
+          
+          # Run Lighthouse CI
+          lhci autorun --config=.lighthouserc.temp.json || echo "lighthouse_failed=true" >> $GITHUB_OUTPUT
+          
+      - name: Test CDN Headers
+        run: |
+          echo "🔍 Testing CDN headers..."
+          BASE_URL="${{ steps.deployment.outputs.url }}"
+          
+          echo "Testing static asset caching..."
+          STATIC_HEADERS=$(curl -s -I "${BASE_URL}/favicon.ico" | grep -i "cache-control\|cf-cache-status\|x-cache")
+          echo "Static asset headers: $STATIC_HEADERS"
+          
+          echo "Testing HTML caching..."
+          HTML_HEADERS=$(curl -s -I "${BASE_URL}/en" | grep -i "cache-control\|cf-cache-status\|x-cache")
+          echo "HTML headers: $HTML_HEADERS"
+          
+          echo "Testing API no-cache..."
+          API_HEADERS=$(curl -s -I "${BASE_URL}/api/ops/health" | grep -i "cache-control\|cf-cache-status\|x-cache")
+          echo "API headers: $API_HEADERS"
+          
+      - name: Test Image Optimization
+        run: |
+          echo "🖼️ Testing image optimization..."
+          BASE_URL="${{ steps.deployment.outputs.url }}"
+          
+          # Test WebP support
+          WEBP_RESPONSE=$(curl -s -I "${BASE_URL}/images/hero.jpg" -H "Accept: image/webp,image/*" | head -1)
+          echo "WebP response: $WEBP_RESPONSE"
+          
+          # Test AVIF support
+          AVIF_RESPONSE=$(curl -s -I "${BASE_URL}/images/hero.jpg" -H "Accept: image/avif,image/webp,image/*" | head -1)
+          echo "AVIF response: $AVIF_RESPONSE"
+          
+      - name: Performance Budget Check
+        run: |
+          echo "📊 Checking performance budgets..."
+          
+          # Extract key metrics from Lighthouse results
+          if [ -f "lhci_reports/manifest.json" ]; then
+            echo "Lighthouse results found, checking budgets..."
+            
+            # Parse latest result
+            LATEST_REPORT=$(jq -r '.[0].jsonPath' lhci_reports/manifest.json)
+            
+            if [ -f "$LATEST_REPORT" ]; then
+              FCP=$(jq -r '.audits["first-contentful-paint"].numericValue' "$LATEST_REPORT")
+              LCP=$(jq -r '.audits["largest-contentful-paint"].numericValue' "$LATEST_REPORT")
+              CLS=$(jq -r '.audits["cumulative-layout-shift"].numericValue' "$LATEST_REPORT")
+              TBT=$(jq -r '.audits["total-blocking-time"].numericValue' "$LATEST_REPORT")
+              PERF_SCORE=$(jq -r '.categories.performance.score' "$LATEST_REPORT")
+              
+              echo "📈 Performance Metrics:"
+              echo "  First Contentful Paint: ${FCP}ms (budget: <2000ms)"
+              echo "  Largest Contentful Paint: ${LCP}ms (budget: <2500ms)"
+              echo "  Cumulative Layout Shift: ${CLS} (budget: <0.1)"
+              echo "  Total Blocking Time: ${TBT}ms (budget: <300ms)"
+              echo "  Performance Score: $(echo "$PERF_SCORE * 100" | bc)% (budget: >80%)"
+              
+              # Check budgets (non-blocking warnings for now)
+              if (( $(echo "$FCP > 2000" | bc -l) )); then
+                echo "⚠️ FCP budget exceeded (${FCP}ms > 2000ms)"
+              fi
+              
+              if (( $(echo "$LCP > 2500" | bc -l) )); then
+                echo "⚠️ LCP budget exceeded (${LCP}ms > 2500ms)"
+              fi
+              
+              if (( $(echo "$CLS > 0.1" | bc -l) )); then
+                echo "❌ CLS budget exceeded (${CLS} > 0.1)"
+                exit 1
+              fi
+              
+              if (( $(echo "$PERF_SCORE < 0.8" | bc -l) )); then
+                echo "⚠️ Performance score below target ($(echo "$PERF_SCORE * 100" | bc)% < 80%)"
+              fi
+            else
+              echo "⚠️ Lighthouse report file not found: $LATEST_REPORT"
+            fi
+          else
+            echo "⚠️ No Lighthouse results found"
+          fi
+          
+      - name: Comment PR with Results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            let comment = `## 🚀 CDN & Performance Check Results\n\n`;
+            comment += `**Deployment URL:** ${{ steps.deployment.outputs.url }}\n\n`;
+            
+            // Add cache warmup results
+            comment += `### 🔥 Cache Warmup\n`;
+            comment += `Cache warmup completed successfully. Check the [workflow logs](${context.payload.pull_request.html_url}/checks) for detailed results.\n\n`;
+            
+            // Add performance results if available
+            if (fs.existsSync('lhci_reports/manifest.json')) {
+              const manifest = JSON.parse(fs.readFileSync('lhci_reports/manifest.json', 'utf8'));
+              if (manifest[0] && manifest[0].jsonPath && fs.existsSync(manifest[0].jsonPath)) {
+                const report = JSON.parse(fs.readFileSync(manifest[0].jsonPath, 'utf8'));
+                const perfScore = Math.round(report.categories.performance.score * 100);
+                const fcp = Math.round(report.audits['first-contentful-paint'].numericValue);
+                const lcp = Math.round(report.audits['largest-contentful-paint'].numericValue);
+                const cls = report.audits['cumulative-layout-shift'].numericValue.toFixed(3);
+                
+                comment += `### 📊 Performance Metrics\n`;
+                comment += `| Metric | Value | Budget | Status |\n`;
+                comment += `|--------|-------|--------|---------|\n`;
+                comment += `| Performance Score | ${perfScore}% | >80% | ${perfScore >= 80 ? '✅' : '⚠️'} |\n`;
+                comment += `| First Contentful Paint | ${fcp}ms | <2000ms | ${fcp < 2000 ? '✅' : '⚠️'} |\n`;
+                comment += `| Largest Contentful Paint | ${lcp}ms | <2500ms | ${lcp < 2500 ? '✅' : '⚠️'} |\n`;
+                comment += `| Cumulative Layout Shift | ${cls} | <0.1 | ${cls < 0.1 ? '✅' : '❌'} |\n\n`;
+              }
+            }
+            
+            comment += `### 🔗 Links\n`;
+            comment += `- [Lighthouse Report](https://storage.googleapis.com/lighthouse-infrastructure.appspot.com/reports/${manifest?.[0]?.url || 'report-not-found'}.html)\n`;
+            comment += `- [Deployment URL](${{ steps.deployment.outputs.url }})\n`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+            
+      - name: Upload Lighthouse Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-results
+          path: |
+            lhci_reports/
+            .lighthouserc.temp.json
+          retention-days: 30

@@ -1,0 +1,21 @@
+{
+  "wizard": {
+    "title": "Assistant de Saisie de Données",
+    "step1": "Configuration de l'Organisation",
+    "step2": "Données d'Activité",
+    "step3": "Révision et Soumission",
+    "electricity": "Consommation d'Électricité (kWh)",
+    "fuel": "Consommation de Carburant (litres)",
+    "waste": "Déchets Générés (tonnes)",
+    "travel": "Voyages d'Affaires (km)",
+    "training": "Heures de Formation",
+    "womenPercent": "Pourcentage de Femmes (%)",
+    "sourceNote": "Note de Source (optionnel)",
+    "continue": "Continuer",
+    "validation": {
+      "required": "Ce champ est requis",
+      "positive": "La valeur doit être positive",
+      "invalidEmail": "Veuillez saisir un email valide"
+    }
+  }
+}

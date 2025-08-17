@@ -1,0 +1,203 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "GreenMetrics - Database HA",
+    "tags": ["greenmetrics", "database", "ha", "postgres"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Replication Lag",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "db_replication_lag_seconds",
+            "legendFormat": "Lag (seconds)"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "decimals": 1,
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 60},
+                {"color": "red", "value": 180}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "Database Health Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"greenmetrics\", instance=~\".*health.*\"}",
+            "legendFormat": "Health Check"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {"options": {"0": {"text": "DOWN"}}, "type": "value"},
+              {"options": {"1": {"text": "UP"}}, "type": "value"}
+            ],
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "green", "value": 1}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 6, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "Health Check Response Time",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "avg(http_request_duration_ms{route=\"/api/ops/db/health\"})",
+            "legendFormat": "Health Check Latency"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms",
+            "decimals": 0
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 12, "y": 0}
+      },
+      {
+        "id": 4,
+        "title": "RPO Compliance",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "db_replication_lag_seconds < 300",
+            "legendFormat": "Within 5min RPO"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {"options": {"0": {"text": "BREACH"}}, "type": "value"},
+              {"options": {"1": {"text": "OK"}}, "type": "value"}
+            ],
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "green", "value": 1}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0}
+      },
+      {
+        "id": 5,
+        "title": "Replication Lag Over Time",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "db_replication_lag_seconds",
+            "legendFormat": "Replication Lag"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "custom": {
+              "thresholdsStyle": {
+                "mode": "line"
+              }
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 60},
+                {"color": "red", "value": 180}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 8}
+      },
+      {
+        "id": 6,
+        "title": "Database Health Check Success Rate",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(http_requests_total{route=\"/api/ops/db/health\", status=\"200\"}[5m]) / rate(http_requests_total{route=\"/api/ops/db/health\"}[5m])",
+            "legendFormat": "Success Rate"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percentunit",
+            "min": 0,
+            "max": 1
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
+      },
+      {
+        "id": 7,
+        "title": "Health Check Request Rate",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(http_requests_total{route=\"/api/ops/db/health\"}[5m])",
+            "legendFormat": "Health Checks/sec"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps"
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
+      },
+      {
+        "id": 8,
+        "title": "Database Operations by Type",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(http_requests_total{route=~\"/api/.*\"}[5m])",
+            "legendFormat": "{{route}} - {{method}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps"
+          }
+        },
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 24}
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "15s",
+    "annotations": {
+      "list": [
+        {
+          "name": "RPO Breach",
+          "datasource": "prometheus",
+          "expr": "ALERTS{alertname=\"DatabaseReplicationLag\", alertstate=\"firing\"}",
+          "textFormat": "Replication lag alert: {{value}}s",
+          "iconColor": "red"
+        }
+      ]
+    }
+  }
+}

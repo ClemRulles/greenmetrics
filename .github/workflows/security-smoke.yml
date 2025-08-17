@@ -1,0 +1,213 @@
+name: Security Smoke Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_ENV: test
+  NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+
+jobs:
+  security-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run security unit tests
+        run: npm test -- __tests__/security/
+        
+      - name: Security headers check
+        run: |
+          npm run build
+          npm run start &
+          sleep 10
+          
+          # Test CSP header presence
+          curl -I http://localhost:3000 | grep -i "content-security-policy" || exit 1
+          
+          # Test HSTS header
+          curl -I http://localhost:3000 | grep -i "strict-transport-security" || exit 1
+          
+          # Test X-Frame-Options
+          curl -I http://localhost:3000 | grep -i "x-frame-options" || exit 1
+          
+          # Test X-Content-Type-Options
+          curl -I http://localhost:3000 | grep -i "x-content-type-options" || exit 1
+          
+          killall node || true
+      
+      - name: Rate limiting test
+        if: github.event_name == 'pull_request'
+        run: |
+          npm run start &
+          sleep 10
+          
+          # Test auth rate limiting (should allow 5 requests)
+          for i in {1..5}; do
+            curl -X POST http://localhost:3000/api/auth/signin -d '{"email":"test@example.com"}' -H "Content-Type: application/json" || true
+          done
+          
+          # 6th request should be rate limited
+          response=$(curl -X POST http://localhost:3000/api/auth/signin -d '{"email":"test@example.com"}' -H "Content-Type: application/json" -w "%{http_code}" -o /dev/null -s)
+          if [ "$response" != "429" ]; then
+            echo "Rate limiting not working: expected 429, got $response"
+            exit 1
+          fi
+          
+          killall node || true
+      
+      - name: Webhook signature validation
+        run: |
+          # Test webhook endpoints require valid signatures
+          response=$(curl -X POST http://localhost:3000/api/webhooks/stripe -d '{"test": "data"}' -w "%{http_code}" -o /dev/null -s)
+          if [ "$response" != "401" ]; then
+            echo "Webhook security not working: expected 401, got $response"
+            exit 1
+          fi
+          
+      - name: Security configuration validation
+        run: |
+          # Validate security configurations
+          node -e "
+            const config = require('./next.config.ts');
+            const headers = config.default.headers || [];
+            
+            const securityHeaders = headers.find(h => h.source === '/(.*)')?.headers || [];
+            const csp = securityHeaders.find(h => h.key === 'Content-Security-Policy');
+            
+            if (!csp) {
+              console.error('CSP header not configured');
+              process.exit(1);
+            }
+            
+            console.log('Security configuration validated');
+          "
+
+  cloudflare-config-validation:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Validate Cloudflare configuration
+        run: |
+          # Check WAF rules syntax
+          if [ -f "infra/cdn/cloudflare.yaml" ]; then
+            echo "Cloudflare configuration found"
+            
+            # Basic YAML syntax validation
+            python3 -c "
+            import yaml
+            with open('infra/cdn/cloudflare.yaml', 'r') as f:
+                config = yaml.safe_load(f)
+                
+            # Validate required sections
+            required_sections = ['waf_rules', 'rate_limiting', 'bot_management']
+            for section in required_sections:
+                if section not in config:
+                    print(f'Missing required section: {section}')
+                    exit(1)
+                    
+            print('Cloudflare configuration validated')
+            "
+          else
+            echo "Cloudflare configuration not found"
+            exit 1
+          fi
+
+  dependency-security-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run dependency security audit
+        run: |
+          npm audit --audit-level moderate
+          
+      - name: Check for known vulnerabilities
+        run: |
+          # Check package.json for known vulnerable packages
+          node -e "
+            const pkg = require('./package.json');
+            const deps = {...pkg.dependencies, ...pkg.devDependencies};
+            
+            // List of packages with known security concerns
+            const watchList = ['lodash', 'moment', 'axios'];
+            
+            for (const [name, version] of Object.entries(deps)) {
+              if (watchList.includes(name)) {
+                console.log(\`Monitoring dependency: \${name}@\${version}\`);
+              }
+            }
+            
+            console.log('Dependency security scan completed');
+          "
+
+  secrets-detection:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Secret detection scan
+        run: |
+          # Simple pattern-based secret detection
+          echo "Scanning for potential secrets..."
+          
+          # Check for common secret patterns (excluding test files)
+          if grep -r -E "(api[_-]?key|secret[_-]?key|password|token)" --include="*.ts" --include="*.js" --exclude-dir="__tests__" --exclude-dir="node_modules" . | grep -v "process.env" | grep -v "// " | grep -v "/* "; then
+            echo "⚠️  Potential hardcoded secrets found"
+            echo "Please review the above matches and ensure no secrets are committed"
+            exit 1
+          else
+            echo "✅ No hardcoded secrets detected"
+          fi
+          
+      - name: Environment variable validation
+        run: |
+          # Check that all required environment variables are documented
+          required_vars=(
+            "NEXTAUTH_SECRET"
+            "DATABASE_URL"
+            "CLOUDFLARE_API_TOKEN"
+            "CLOUDFLARE_ZONE_ID"
+            "STRIPE_SECRET_KEY"
+            "GITHUB_WEBHOOK_SECRET"
+          )
+          
+          for var in "${required_vars[@]}"; do
+            if ! grep -q "$var" README.md && ! grep -q "$var" docs/deployment.md; then
+              echo "Environment variable $var not documented"
+              exit 1
+            fi
+          done
+          
+          echo "Environment variables properly documented"

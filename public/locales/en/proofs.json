@@ -1,0 +1,65 @@
+{
+  "title": "Proof Vault",
+  "subtitle": "Private evidence storage for emissions data",
+  "upload": {
+    "title": "Upload Proof",
+    "dragDrop": "Drag and drop files here, or click to select",
+    "selectFile": "Select File",
+    "uploading": "Uploading...",
+    "upload": "Upload",
+    "success": "File uploaded successfully",
+    "error": "Failed to upload file",
+    "maxSize": "Maximum file size: 25MB",
+    "allowedTypes": "Allowed types: PDF, Images, CSV, Excel"
+  },
+  "form": {
+    "proofKind": "Proof Type",
+    "kinds": {
+      "ELECTRICITY_BILL": "Electricity Bill",
+      "GAS_BILL": "Gas Bill", 
+      "FUEL_INVOICE": "Fuel Invoice",
+      "OTHER": "Other"
+    },
+    "periodStart": "Period Start",
+    "periodEnd": "Period End",
+    "selectKind": "Select proof type",
+    "required": "Required"
+  },
+  "list": {
+    "title": "Uploaded Proofs",
+    "empty": "No proofs uploaded yet",
+    "filename": "Filename",
+    "type": "Type",
+    "period": "Period",
+    "size": "Size",
+    "uploaded": "Uploaded",
+    "actions": "Actions",
+    "delete": "Delete",
+    "confirmDelete": "Are you sure you want to delete this proof?",
+    "deleteSuccess": "Proof deleted successfully",
+    "deleteError": "Failed to delete proof"
+  },
+  "summary": {
+    "title": "Evidence Summary",
+    "year": "Year {{year}}",
+    "totalFiles": "Total Files: {{count}}",
+    "byCoverage": "Coverage by Type",
+    "monthsCovered": "{{months}} months covered",
+    "noEvidence": "No evidence for this year"
+  },
+  "attestation": {
+    "title": "Data Accuracy Attestation",
+    "required": "Attestation required before certificate issuance",
+    "statement": "I declare these data are accurate to the best of my knowledge for the stated period.",
+    "agree": "I agree to this attestation",
+    "submit": "Submit Attestation",
+    "success": "Attestation recorded successfully",
+    "error": "Failed to record attestation",
+    "alreadyAttested": "You have already attested for this period",
+    "viewAttestation": "View Attestation"
+  },
+  "privacy": {
+    "title": "Privacy Notice",
+    "description": "Files are stored securely and only summary statistics are shared with partners. Your actual documents remain private."
+  }
+}

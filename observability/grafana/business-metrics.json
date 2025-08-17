@@ -1,0 +1,220 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "GreenMetrics - Business Metrics",
+    "tags": ["greenmetrics", "business", "billing", "exports"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "PDF Exports (Total)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(pdf_exports_total)",
+            "legendFormat": "Total Exports"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "decimals": 0
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "PDF Export Success Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(rate(pdf_exports_total{status=\"success\"}[5m])) / sum(rate(pdf_exports_total[5m]))",
+            "legendFormat": "Success Rate"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percentunit",
+            "decimals": 2,
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": null},
+                {"color": "yellow", "value": 0.95},
+                {"color": "green", "value": 0.98}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 6, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "Avg PDF Render Time",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rate(pdf_render_duration_ms_sum[5m]) / rate(pdf_render_duration_ms_count[5m])",
+            "legendFormat": "Avg Render Time"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms",
+            "decimals": 0,
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 5000},
+                {"color": "red", "value": 10000}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 12, "y": 0}
+      },
+      {
+        "id": 4,
+        "title": "Billing Entitlement Denials",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "rate(billing_entitlement_denied_total[5m])",
+            "legendFormat": "Denials/sec"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops",
+            "decimals": 3,
+            "thresholds": {
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 0.1},
+                {"color": "red", "value": 0.5}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 6, "x": 18, "y": 0}
+      },
+      {
+        "id": 5,
+        "title": "PDF Export Rate Over Time",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(pdf_exports_total{status=\"success\"}[5m])",
+            "legendFormat": "Successful Exports/sec"
+          },
+          {
+            "expr": "rate(pdf_exports_total{status=\"error\"}[5m])",
+            "legendFormat": "Failed Exports/sec"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops"
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+      },
+      {
+        "id": 6,
+        "title": "PDF Render Time Distribution",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, sum(rate(pdf_render_duration_ms_bucket[5m])) by (le))",
+            "legendFormat": "P50"
+          },
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(pdf_render_duration_ms_bucket[5m])) by (le))",
+            "legendFormat": "P95"
+          },
+          {
+            "expr": "histogram_quantile(0.99, sum(rate(pdf_render_duration_ms_bucket[5m])) by (le))",
+            "legendFormat": "P99"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms"
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+      },
+      {
+        "id": 7,
+        "title": "Webhook Events",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(webhook_failures_total[5m])",
+            "legendFormat": "Webhook Failures/sec"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops"
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
+      },
+      {
+        "id": 8,
+        "title": "Rate Limiting Activity",
+        "type": "timeseries",
+        "targets": [
+          {
+            "expr": "rate(rate_limit_hits_total[5m])",
+            "legendFormat": "Rate Limit Hits/sec"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops"
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
+      },
+      {
+        "id": 9,
+        "title": "Business KPIs Summary",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "sum(increase(pdf_exports_total[24h]))",
+            "legendFormat": "Daily PDF Exports",
+            "format": "table",
+            "instant": true
+          },
+          {
+            "expr": "sum(increase(billing_entitlement_denied_total[24h]))",
+            "legendFormat": "Daily Billing Denials",
+            "format": "table",
+            "instant": true
+          },
+          {
+            "expr": "sum(increase(rate_limit_hits_total[24h]))",
+            "legendFormat": "Daily Rate Limit Hits",
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "decimals": 0
+          }
+        },
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 24}
+      }
+    ],
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    },
+    "refresh": "1m"
+  }
+}

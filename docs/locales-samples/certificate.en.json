@@ -1,0 +1,61 @@
+{
+  "certificate": {
+    "title": "Environmental Certificate Verified",
+    "subtitle": "This certificate has been cryptographically verified and is authentic",
+    "header": {
+      "title": "Supplier Emissions Certificate (Scopes 1–2)",
+      "verified": "Verified",
+      "certificateId": "Certificate ID"
+    },
+    "supplier": {
+      "title": "Supplier Information",
+      "organization": "Organization",
+      "reportingPeriod": "Reporting Period",
+      "productionVolume": "Production Volume",
+      "methodology": "Methodology",
+      "factors": "Factors",
+      "framework": "Framework"
+    },
+    "emissions": {
+      "title": "Emissions Summary",
+      "scope1": "Scope 1",
+      "scope2LB": "Scope 2 (LB)",
+      "scope2MB": "Scope 2 (MB)",
+      "total": "Total",
+      "units": "tCO₂e"
+    },
+    "intensity": {
+      "title": "Emission Intensity",
+      "perUnit": "Intensity per Unit",
+      "units": "kg CO₂e",
+      "per": "per",
+      "qualityGrade": "Quality Grade",
+      "grade": "Grade"
+    },
+    "verification": {
+      "title": "Verification Details",
+      "cryptographic": {
+        "title": "Cryptographically Verified",
+        "subtitle": "HMAC-SHA256 signature validated"
+      },
+      "tamperProof": {
+        "title": "Tamper-Proof",
+        "subtitle": "Data integrity guaranteed"
+      },
+      "issued": {
+        "title": "Issued",
+        "at": "at"
+      }
+    },
+    "footer": {
+      "description": "This certificate was generated and verified using cryptographic signatures.",
+      "contact": "For questions about this certificate, please contact the issuing organization."
+    },
+    "errors": {
+      "notFound": "Certificate not found",
+      "invalid": "Invalid certificate",
+      "expired": "Certificate has expired",
+      "revoked": "Certificate has been revoked"
+    }
+  }
+}

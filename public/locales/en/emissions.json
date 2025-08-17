@@ -1,0 +1,10 @@
+{
+  "emissions": {
+    "scope1": "Scope 1 (Direct Emissions)",
+    "scope2": "Scope 2 (Indirect Emissions)",
+    "factor": "Emission Factor",
+    "co2equivalent": "CO₂ equivalent",
+    "baseline": "Baseline Year",
+    "methodology": "Calculation Methodology"
+  }
+}

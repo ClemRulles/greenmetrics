@@ -1,0 +1,27 @@
+{
+  "title": "Paramètres de partage des données",
+  "back": "Retour",
+  "consent": {
+    "title": "Consentement au partage des données partenaires",
+    "description": "Gérez la façon dont les données de votre organisation sont partagées avec les organisations partenaires. Vous pouvez accepter ou rejeter les demandes de partage des partenaires.",
+    "noRequests": "Aucune demande de consentement partenaire pour le moment",
+    "requestedAt": "Demandé le",
+    "status": {
+      "pending": "En attente",
+      "accepted": "Accepté",
+      "rejected": "Rejeté"
+    },
+    "actions": {
+      "accept": "Accepter",
+      "reject": "Rejeter"
+    }
+  },
+  "policy": {
+    "title": "Politique de confidentialité",
+    "description": "Vos préférences de partage de données sont régies par notre politique de confidentialité. Les partenaires ne peuvent accéder qu'aux données agrégées, sauf si vous accordez explicitement un accès détaillé."
+  },
+  "visibility": {
+    "detailed": "Détaillé",
+    "aggregated": "Agrégé"
+  }
+}

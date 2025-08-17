@@ -1,0 +1,143 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* GreenMetrics UI System - Theme Tokens */
+:root {
+  /* Colors - Revolut-inspired palette */
+  --blue: #2563EB;
+  --brand-blue: #2563EB;
+  --brand-blue-50: #EFF6FF;
+  --green: #16A34A;
+  --brand-green: #16A34A;
+  --brand-green-50: #ECFDF5;
+  --neutral-50: #FAFAFA;
+  --neutral-100: #F5F5F5;
+  --neutral-200: #E5E5E5;
+  --neutral-300: #D4D4D4;
+  --neutral-400: #A3A3A3;
+  --neutral-500: #737373;
+  --neutral-600: #525252;
+  --neutral-700: #404040;
+  --neutral-800: #262626;
+  --neutral-900: #171717;
+  
+  /* Status colors */
+  --red: #DC2626;
+  --amber: #D97706;
+  --emerald: #059669;
+  
+  /* Spacing scale */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2rem;
+  --space-2xl: 3rem;
+  --space-3xl: 4rem;
+  /* Numeric scale used by design: 4,6,8,10,12 (rem) */
+  --space-4: 1rem;   /* 16px */
+  --space-6: 1.5rem; /* 24px */
+  --space-8: 2rem;   /* 32px */
+  --space-10: 2.5rem;/* 40px */
+  --space-12: 3rem;  /* 48px */
+  
+  /* Typography scale */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  
+  /* Radii */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  /* Text colors */
+  --text-default: #0F172A;
+  --text-muted: #64748B;
+  
+  /* Motion tokens */
+  --duration-fast: 0.12s;
+  --duration-normal: 0.18s;
+  --duration-slow: 0.24s;
+  --ease-in: cubic-bezier(0.4, 0.0, 1, 1);
+  --ease-out: cubic-bezier(0.0, 0.0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+/* Motion baseline - respects user preferences */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  * {
+    transition-timing-function: var(--ease-out);
+    transition-duration: var(--duration-normal);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+:root {
+  color-scheme: light dark;
+  --surface: 0 0% 100%;
+  --surface-soft: 210 40% 98%;
+  --ring: 217 91% 60%;
+}
+
+.dark {
+  --surface: 222 47% 11%;
+  --surface-soft: 222 47% 13%;
+  --ring: 217 91% 70%;
+}
+
+html:focus-within {
+  scroll-behavior: smooth;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--tw-ring-offset-color, transparent),
+    0 0 0 4px rgba(37, 99, 235, 0.6); /* blue-600 */
+  border-radius: 0.5rem;
+}
+
+/* Ensure smooth transitions for theme changes */
+* {
+  transition-property: color, background-color, border-color;
+  transition-duration: 200ms;
+  transition-timing-function: ease-in-out;
+}
+
+/* Respect user's motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *:not([data-allow-motion]) {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

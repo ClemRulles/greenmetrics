@@ -1,0 +1,54 @@
+{
+  "title": "Partner Targets",
+  "subtitle": "Set and track your emissions reduction targets",
+  "coverageTarget": "Coverage target (%)",
+  "coverageTargetDesc": "Percentage of suppliers with verified data",
+  "dqsMin": "Minimum data quality (A–C)",
+  "dqsMinDesc": "Minimum acceptable data quality grade",
+  "targetTons": "Attributed tCO₂e target",
+  "targetTonsDesc": "Maximum attributed emissions in tonnes CO₂e",
+  "baselineYear": "Baseline year",
+  "baselineYearDesc": "Reference year for emissions comparison",
+  "save": "Save targets",
+  "saving": "Saving...",
+  "snapshot": "Take snapshot",
+  "takingSnapshot": "Creating snapshot...",
+  "progress": {
+    "title": "Current Progress",
+    "coverage": "Coverage",
+    "quality": "Data Quality", 
+    "emissions": "Attributed Emissions",
+    "status": "Status",
+    "onTrack": "On track",
+    "offTrack": "Off track",
+    "vs": "vs",
+    "target": "target",
+    "tons": "tCO₂e"
+  },
+  "charts": {
+    "trend": "Progress Trend",
+    "noData": "No historical data available"
+  },
+  "exports": {
+    "title": "Data Exports",
+    "description": "Download privacy-safe Scope 3 Category 1 data",
+    "csv": "Download CSV",
+    "json": "Download JSON",
+    "downloading": "Downloading..."
+  },
+  "alerts": {
+    "saved": "Targets saved successfully",
+    "snapshotCreated": "Progress snapshot created",
+    "exportReady": "Export downloaded successfully",
+    "error": "An error occurred. Please try again."
+  },
+  "validation": {
+    "coverageRequired": "Coverage target is required",
+    "coverageRange": "Coverage must be between 0 and 100",
+    "dqsRequired": "Data quality minimum is required",
+    "targetTonsRequired": "Target emissions is required",
+    "targetTonsPositive": "Target emissions must be positive",
+    "baselineYearRequired": "Baseline year is required",
+    "baselineYearRange": "Baseline year must be between 2000 and current year"
+  }
+}

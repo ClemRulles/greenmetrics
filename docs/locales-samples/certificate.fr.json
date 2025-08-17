@@ -1,0 +1,61 @@
+{
+  "certificate": {
+    "title": "Certificat Environnemental Vérifié",
+    "subtitle": "Ce certificat a été vérifié cryptographiquement et est authentique",
+    "header": {
+      "title": "Certificat d'Émissions Fournisseur (Scopes 1–2)",
+      "verified": "Vérifié",
+      "certificateId": "ID du Certificat"
+    },
+    "supplier": {
+      "title": "Informations Fournisseur",
+      "organization": "Organisation",
+      "reportingPeriod": "Période de Rapport",
+      "productionVolume": "Volume de Production",
+      "methodology": "Méthodologie",
+      "factors": "Facteurs",
+      "framework": "Cadre"
+    },
+    "emissions": {
+      "title": "Résumé des Émissions",
+      "scope1": "Scope 1",
+      "scope2LB": "Scope 2 (LB)",
+      "scope2MB": "Scope 2 (MB)",
+      "total": "Total",
+      "units": "tCO₂e"
+    },
+    "intensity": {
+      "title": "Intensité d'Émission",
+      "perUnit": "Intensité par Unité",
+      "units": "kg CO₂e",
+      "per": "par",
+      "qualityGrade": "Grade de Qualité",
+      "grade": "Grade"
+    },
+    "verification": {
+      "title": "Détails de Vérification",
+      "cryptographic": {
+        "title": "Vérifié Cryptographiquement",
+        "subtitle": "Signature HMAC-SHA256 validée"
+      },
+      "tamperProof": {
+        "title": "Inviolable",
+        "subtitle": "Intégrité des données garantie"
+      },
+      "issued": {
+        "title": "Émis",
+        "at": "à"
+      }
+    },
+    "footer": {
+      "description": "Ce certificat a été généré et vérifié en utilisant des signatures cryptographiques.",
+      "contact": "Pour des questions sur ce certificat, veuillez contacter l'organisation émettrice."
+    },
+    "errors": {
+      "notFound": "Certificat introuvable",
+      "invalid": "Certificat invalide",
+      "expired": "Le certificat a expiré",
+      "revoked": "Le certificat a été révoqué"
+    }
+  }
+}

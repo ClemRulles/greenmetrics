@@ -1,0 +1,42 @@
+{
+  "title": "Couverture Sponsor",
+  "back": "Retour",
+  "cards": {
+    "coverage": "Couverture",
+    "quality": "Score de Qualité des Données",
+    "invited": "Invités",
+    "active": "Actifs"
+  },
+  "table": {
+    "supplier": "Fournisseur",
+    "spendShare": "Part des dépenses",
+    "status": "Statut",
+    "active": "Actif",
+    "invited": "Invité",
+    "missing": "Manquant",
+    "primary": "Primaire",
+    "estimated": "Estimé"
+  },
+  "sim": {
+    "title": "Simulateur de Coûts",
+    "basic": "Sièges Basic",
+    "pro": "Sièges Pro",
+    "monthly": "Mensuel",
+    "annual": "Annuel",
+    "discount": "Remise",
+    "total": "Total",
+    "perSeat": "par siège"
+  },
+  "metrics": {
+    "coveragePercent": "Pourcentage de Couverture",
+    "dataQuality": "Score de Qualité des Données",
+    "invitedSuppliers": "Fournisseurs Invités",
+    "activeSuppliers": "Fournisseurs Actifs",
+    "primaryData": "Données Primaires",
+    "estimatedData": "Données Estimées"
+  },
+  "actions": {
+    "createSnapshot": "Créer un Instantané",
+    "updateLinks": "Mettre à Jour les Liens"
+  }
+}

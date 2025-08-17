@@ -1,0 +1,54 @@
+{
+  "title": "Objectifs Partenaire",
+  "subtitle": "Définir et suivre vos objectifs de réduction d'émissions",
+  "coverageTarget": "Objectif de couverture (%)",
+  "coverageTargetDesc": "Pourcentage de fournisseurs avec données vérifiées",
+  "dqsMin": "Qualité minimale des données (A–C)",
+  "dqsMinDesc": "Note de qualité des données minimale acceptable",
+  "targetTons": "Objectif tCO₂e attribuées",
+  "targetTonsDesc": "Émissions attribuées maximales en tonnes CO₂e",
+  "baselineYear": "Année de référence",
+  "baselineYearDesc": "Année de référence pour la comparaison des émissions",
+  "save": "Enregistrer les objectifs",
+  "saving": "Enregistrement...",
+  "snapshot": "Prendre un instantané",
+  "takingSnapshot": "Création de l'instantané...",
+  "progress": {
+    "title": "Progrès Actuel",
+    "coverage": "Couverture",
+    "quality": "Qualité des Données",
+    "emissions": "Émissions Attribuées",
+    "status": "Statut",
+    "onTrack": "Dans l'axe",
+    "offTrack": "Hors de l'axe",
+    "vs": "vs",
+    "target": "objectif",
+    "tons": "tCO₂e"
+  },
+  "charts": {
+    "trend": "Tendance des Progrès",
+    "noData": "Aucune donnée historique disponible"
+  },
+  "exports": {
+    "title": "Exports de Données",
+    "description": "Télécharger les données Scope 3 Catégorie 1 respectueuses de la vie privée",
+    "csv": "Télécharger CSV",
+    "json": "Télécharger JSON",
+    "downloading": "Téléchargement..."
+  },
+  "alerts": {
+    "saved": "Objectifs enregistrés avec succès",
+    "snapshotCreated": "Instantané des progrès créé",
+    "exportReady": "Export téléchargé avec succès",
+    "error": "Une erreur s'est produite. Veuillez réessayer."
+  },
+  "validation": {
+    "coverageRequired": "L'objectif de couverture est requis",
+    "coverageRange": "La couverture doit être entre 0 et 100",
+    "dqsRequired": "La qualité minimale des données est requise",
+    "targetTonsRequired": "L'objectif d'émissions est requis",
+    "targetTonsPositive": "L'objectif d'émissions doit être positif",
+    "baselineYearRequired": "L'année de référence est requise",
+    "baselineYearRange": "L'année de référence doit être entre 2000 et l'année actuelle"
+  }
+}

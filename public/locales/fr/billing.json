@@ -1,0 +1,93 @@
+{
+  "title": "Facturation & Utilisation",
+  "subtitle": "Gérez votre abonnement et votre utilisation",
+  "currentPlan": "Offre actuelle",
+  "plan.free": "Gratuite",
+  "plan.basic": "Basic",
+  "plan.pro": "Pro",
+  "upgradeToPro": "Passer à Pro",
+  "upgradeToBasic": "Passer à Basic",
+  "openPortal": "Gérer la facturation",
+  "usageSection": "Consommation cette période",
+  "usageReports": "Rapports / mois",
+  "usageExports": "Exports / heure",
+  "usageApi": "Appels API / jour",
+  "usageStorage": "Stockage (Go)",
+  "subscriptionStatus": "Statut",
+  "status.active": "Actif",
+  "status.trialing": "Essai",
+  "status.past_due": "En retard",
+  "status.canceled": "Annulé",
+  "status.incomplete": "Incomplet",
+  "status.unpaid": "Impayé",
+  "banner.graceTitle": "Problème de paiement",
+  "banner.grace": "Limites réduites actives jusqu'au {date}. Mettez à jour vos informations de facturation pour restaurer l'accès complet.",
+  "banner.frozenTitle": "Accès suspendu",
+  "banner.frozen": "Votre abonnement est gelé en raison de problèmes de paiement. Mettez à jour votre moyen de paiement pour restaurer l'accès.",
+  "banner.updatePayment": "Mettre à jour le paiement",
+  "planDescription.free": "Parfait pour découvrir GreenMetrics",
+  "planDescription.basic": "Pour les entreprises qui suivent leurs émissions",
+  "planDescription.pro": "Pour les entreprises avec des chaînes d'approvisionnement complexes",
+  "perMonth": "par mois",
+  "active": "Actif",
+  "inactive": "Inactif",
+  "includedFeatures": "Fonctionnalités incluses",
+  "reports": "Rapports",
+  "suppliers": "Fournisseurs",
+  "exports": "Exports",
+  "storage": "Stockage",
+  "actions": "Actions",
+  "manageSubscription": "Gérer l'abonnement",
+  "comparePlans": "Comparer les offres",
+  "subscriptionCreated": "✅ Abonnement créé avec succès !",
+  "subscriptionCanceled": "⚠️ Abonnement annulé. Vous pouvez réessayer à tout moment.",
+  "billingError": "Erreur de facturation",
+  "unableToLoad": "Impossible de charger les informations de facturation.",
+  "plans": {
+    "free": {
+      "name": "Gratuit",
+      "features": [
+        "Rapports de base",
+        "Support communautaire",
+        "3 liens fournisseurs"
+      ]
+    },
+    "basic": {
+      "name": "Basic",
+      "features": [
+        "Exports PDF",
+        "Support par e-mail",
+        "25 liens fournisseurs",
+        "Objectifs partenaires"
+      ]
+    },
+    "pro": {
+      "name": "Pro",
+      "features": [
+        "Exports illimités",
+        "Support prioritaire",
+        "200 liens fournisseurs",
+        "Analyses avancées"
+      ]
+    }
+  },
+  "usage": {
+    "reportsGenerated": "Rapports générés ce mois",
+    "suppliersLinked": "Liens fournisseurs actifs",
+    "exportsRequested": "Exports cette heure",
+    "storageUsed": "Stockage utilisé"
+  },
+  "entitlements": {
+    "targetsDisabled": "Les objectifs partenaires nécessitent l'offre Basic ou supérieure",
+    "proofVaultDisabled": "Le coffre-fort de preuves nécessite l'offre Basic ou supérieure",
+    "reportLimitExceeded": "Limite mensuelle de rapports dépassée",
+    "supplierLimitExceeded": "Limite de liens fournisseurs dépassée",
+    "exportLimitExceeded": "Limite horaire d'exports dépassée",
+    "apiLimitExceeded": "Limite quotidienne d'appels API dépassée"
+  },
+  "billing": {
+    "noCustomer": "Aucun client de facturation trouvé. Veuillez créer un abonnement d'abord.",
+    "subscriptionInactive": "Abonnement inactif. Veuillez mettre à jour votre méthode de paiement.",
+    "cannotDowngrade": "Impossible de rétrograder : l'utilisation actuelle dépasse les limites du plan"
+  }
+}

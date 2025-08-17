@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: greenmetrics-web
+  namespace: greenmetrics
+  labels:
+    app.kubernetes.io/name: greenmetrics
+    app.kubernetes.io/component: web
+    app.kubernetes.io/instance: production
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: "/api/ops/metrics"
+    prometheus.io/port: "3000"
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 3000
+    targetPort: http
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: greenmetrics
+    app.kubernetes.io/component: web

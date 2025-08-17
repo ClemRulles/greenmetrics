@@ -1,0 +1,31 @@
+name: Docs CI (OpenAPI + i18n parity)
+
+on:
+  pull_request:
+    paths:
+      - 'docs/**'
+      - '.github/**'
+
+jobs:
+  openapi-lint:
+    name: OpenAPI Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Redocly CLI
+        run: npm i -g @redocly/cli
+      - name: Lint OpenAPI (docs/openapi.yaml)
+        run: redocly lint docs/openapi.yaml
+
+  i18n-parity:
+    name: i18n Key Parity (docs samples)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+      - name: Run parity check against docs samples
+        run: bash docs/scripts/check-i18n-parity.sh docs/locales-samples

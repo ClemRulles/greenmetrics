@@ -1,0 +1,11 @@
+{
+  "common": {
+    "tagline": "Welcome to GreenMetrics"
+  },
+  "navigation": {
+    "home": "Home",
+    "dashboard": "Dashboard",
+    "reports": "Reports",
+    "settings": "Settings"
+  }
+}

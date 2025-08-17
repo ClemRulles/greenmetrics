@@ -1,0 +1,270 @@
+name: Synthetics Monitoring
+
+on:
+  schedule:
+    # Run every 15 minutes during business hours (6 AM - 10 PM UTC)
+    - cron: '*/15 6-22 * * *'
+    # Run every 30 minutes during off-hours
+    - cron: '*/30 22-6 * * *'
+  
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to test'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+      
+      test_pattern:
+        description: 'Test pattern to run'
+        required: false
+        default: 'e2e/synthetics/uptime.spec.ts'
+        type: string
+
+env:
+  NODE_VERSION: '18'
+  
+jobs:
+  synthetics-staging:
+    name: Synthetics - Staging
+    runs-on: ubuntu-latest
+    if: github.event.schedule || github.event.inputs.environment == 'staging'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      
+      - name: Run synthetics tests (Staging)
+        env:
+          STAGING_URL: ${{ secrets.STAGING_URL }}
+          METRICS_BEARER_TOKEN: ${{ secrets.METRICS_BEARER_TOKEN_STAGING }}
+        run: |
+          npx playwright test ${{ github.event.inputs.test_pattern || 'e2e/synthetics/uptime.spec.ts' }} \
+            --project=chromium-desktop \
+            --reporter=github,html \
+            --max-failures=3 \
+            --timeout=30000
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: synthetics-staging-results
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+      
+      - name: Upload trace artifacts
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: synthetics-staging-traces
+          path: test-results/
+          retention-days: 3
+      
+      - name: Notify on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { context } = require('@actions/github');
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            
+            console.log(`❌ Synthetics test failed for staging environment`);
+            console.log(`🔗 View details: ${runUrl}`);
+            
+            // Create issue or send notification here if needed
+            // For example, call a webhook or create a GitHub issue
+  
+  synthetics-production:
+    name: Synthetics - Production
+    runs-on: ubuntu-latest
+    if: github.event.schedule || github.event.inputs.environment == 'production'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      
+      - name: Run synthetics tests (Production)
+        env:
+          PROD_URL: ${{ secrets.PROD_URL }}
+          METRICS_BEARER_TOKEN: ${{ secrets.METRICS_BEARER_TOKEN_PROD }}
+        run: |
+          npx playwright test ${{ github.event.inputs.test_pattern || 'e2e/synthetics/uptime.spec.ts' }} \
+            --project=chromium-desktop \
+            --reporter=github,html \
+            --max-failures=1 \
+            --timeout=30000 \
+            --retries=2
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: synthetics-production-results
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+      
+      - name: Upload trace artifacts
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: synthetics-production-traces
+          path: test-results/
+          retention-days: 7
+      
+      - name: Notify on failure (Production)
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { context } = require('@actions/github');
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            
+            console.log(`🚨 CRITICAL: Synthetics test failed for PRODUCTION environment`);
+            console.log(`🔗 View details: ${runUrl}`);
+            
+            // Create GitHub issue for production failures
+            await github.rest.issues.create({
+              ...context.repo,
+              title: `🚨 Production Synthetics Failure - ${new Date().toISOString()}`,
+              body: `
+            ## Production Synthetics Test Failure
+            
+            **Environment:** Production  
+            **Time:** ${new Date().toISOString()}  
+            **Workflow:** ${context.workflow}  
+            **Run:** [View Results](${runUrl})
+            
+            ### Details
+            The production synthetics monitoring tests have failed. This indicates a potential service disruption.
+            
+            ### Next Steps
+            1. Check the [test results](${runUrl}) for specific failure details
+            2. Verify service health dashboards
+            3. Review recent deployments
+            4. Check infrastructure alerts
+            
+            ### Priority
+            🔴 **HIGH PRIORITY** - Production service impact
+            
+            ---
+            *This issue was created automatically by the synthetics monitoring workflow.*
+            `,
+              labels: ['production', 'monitoring', 'urgent', 'synthetics'],
+              assignees: ['@core-team'] // Replace with actual team members
+            });
+      
+      - name: Send Slack notification (Production)
+        if: failure()
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_PROD_ALERTS }}
+          SLACK_CHANNEL: '#production-alerts'
+          SLACK_COLOR: 'danger'
+          SLACK_MESSAGE: |
+            🚨 **Production Synthetics Failure**
+            
+            Service availability tests have failed in production.
+            
+            **Actions Required:**
+            • Check service health immediately
+            • Review infrastructure status
+            • Investigate potential outage
+            
+            **Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SLACK_TITLE: 'Production Monitoring Alert'
+          SLACK_USERNAME: 'Synthetics Bot'
+
+  health-check:
+    name: Basic Health Check
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Quick health check (Staging)
+        if: github.event.schedule
+        run: |
+          echo "🔍 Running quick health check..."
+          
+          if curl -f -s "${{ secrets.STAGING_URL }}/api/ops/db/health" > /dev/null; then
+            echo "✅ Staging health check passed"
+          else
+            echo "❌ Staging health check failed"
+            exit 1
+          fi
+      
+      - name: Quick health check (Production)
+        if: github.event.schedule
+        run: |
+          if curl -f -s "${{ secrets.PROD_URL }}/api/ops/db/health" > /dev/null; then
+            echo "✅ Production health check passed"
+          else
+            echo "❌ Production health check failed"
+            exit 1
+          fi
+
+# Additional workflow for health-only monitoring (runs more frequently)
+---
+name: Health Check Only
+
+on:
+  schedule:
+    # Every 5 minutes
+    - cron: '*/5 * * * *'
+
+jobs:
+  quick-health:
+    name: Quick Health Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Check staging health
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" "${{ secrets.STAGING_URL }}/api/ops/db/health")
+          if [ "$response" = "200" ]; then
+            echo "✅ Staging health: OK ($response)"
+          else
+            echo "❌ Staging health: FAIL ($response)"
+            exit 1
+          fi
+      
+      - name: Check production health
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" "${{ secrets.PROD_URL }}/api/ops/db/health")
+          if [ "$response" = "200" ]; then
+            echo "✅ Production health: OK ($response)"
+          else
+            echo "❌ Production health: FAIL ($response)"
+            exit 1
+          fi

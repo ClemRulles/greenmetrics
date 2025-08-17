@@ -1,0 +1,40 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: greenmetrics-metrics
+  namespace: greenmetrics
+  labels:
+    app.kubernetes.io/name: greenmetrics
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/instance: production
+    release: prometheus  # Label required by Prometheus Operator
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: greenmetrics
+      app.kubernetes.io/component: web
+  endpoints:
+  - port: http
+    path: /api/ops/metrics
+    interval: 30s
+    scrapeTimeout: 10s
+    scheme: http
+    bearerTokenSecret:
+      name: greenmetrics-secrets
+      key: METRICS_BEARER_TOKEN
+    relabelings:
+    - sourceLabels: [__meta_kubernetes_pod_name]
+      targetLabel: pod
+    - sourceLabels: [__meta_kubernetes_pod_node_name]
+      targetLabel: node
+    - sourceLabels: [__meta_kubernetes_namespace]
+      targetLabel: namespace
+    - targetLabel: service
+      replacement: greenmetrics
+    metricRelabelings:
+    - sourceLabels: [__name__]
+      regex: 'go_.*'
+      action: drop  # Drop Go runtime metrics to reduce cardinality
+    - sourceLabels: [__name__]
+      regex: 'promhttp_.*'
+      action: drop  # Drop Prometheus client metrics

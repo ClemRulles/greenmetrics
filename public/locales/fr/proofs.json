@@ -1,0 +1,65 @@
+{
+  "title": "Coffre-fort de preuves",
+  "subtitle": "Stockage privé des preuves pour les données d'émissions",
+  "upload": {
+    "title": "Télécharger une preuve",
+    "dragDrop": "Glissez-déposez vos fichiers ici, ou cliquez pour sélectionner",
+    "selectFile": "Sélectionner un fichier",
+    "uploading": "Téléchargement...",
+    "upload": "Télécharger",
+    "success": "Fichier téléchargé avec succès",
+    "error": "Échec du téléchargement",
+    "maxSize": "Taille maximale : 25 Mo",
+    "allowedTypes": "Types autorisés : PDF, Images, CSV, Excel"
+  },
+  "form": {
+    "proofKind": "Type de preuve",
+    "kinds": {
+      "ELECTRICITY_BILL": "Facture d'électricité",
+      "GAS_BILL": "Facture de gaz",
+      "FUEL_INVOICE": "Facture de carburant",
+      "OTHER": "Autre"
+    },
+    "periodStart": "Début de période",
+    "periodEnd": "Fin de période",
+    "selectKind": "Sélectionner le type de preuve",
+    "required": "Requis"
+  },
+  "list": {
+    "title": "Preuves téléchargées",
+    "empty": "Aucune preuve téléchargée pour le moment",
+    "filename": "Nom du fichier",
+    "type": "Type",
+    "period": "Période",
+    "size": "Taille",
+    "uploaded": "Téléchargé",
+    "actions": "Actions",
+    "delete": "Supprimer",
+    "confirmDelete": "Êtes-vous sûr de vouloir supprimer cette preuve ?",
+    "deleteSuccess": "Preuve supprimée avec succès",
+    "deleteError": "Échec de la suppression"
+  },
+  "summary": {
+    "title": "Résumé des preuves",
+    "year": "Année {{year}}",
+    "totalFiles": "Total des fichiers : {{count}}",
+    "byCoverage": "Couverture par type",
+    "monthsCovered": "{{months}} mois couverts",
+    "noEvidence": "Aucune preuve pour cette année"
+  },
+  "attestation": {
+    "title": "Attestation de l'exactitude des données",
+    "required": "Attestation requise avant l'émission du certificat",
+    "statement": "Je déclare que ces données sont exactes au meilleur de ma connaissance pour la période indiquée.",
+    "agree": "J'accepte cette attestation",
+    "submit": "Soumettre l'attestation",
+    "success": "Attestation enregistrée avec succès",
+    "error": "Échec de l'enregistrement de l'attestation",
+    "alreadyAttested": "Vous avez déjà attesté pour cette période",
+    "viewAttestation": "Voir l'attestation"
+  },
+  "privacy": {
+    "title": "Avis de confidentialité",
+    "description": "Les fichiers sont stockés de manière sécurisée et seules les statistiques résumées sont partagées avec les partenaires. Vos documents réels restent privés."
+  }
+}

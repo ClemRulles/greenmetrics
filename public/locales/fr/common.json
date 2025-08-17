@@ -1,0 +1,51 @@
+{
+  "common": {
+    "tagline": "Bienvenue sur GreenMetrics"
+  },
+  "navigation": {
+    "home": "Accueil",
+    "dashboard": "Tableau de bord",
+    "reports": "Rapports",
+    "settings": "Paramètres"
+  },
+  "auth": {
+    "signIn": "Se connecter",
+    "signOut": "Se déconnecter",
+    "email": "Email professionnel",
+    "linkSent": "Vérifiez votre boîte mail — nous venons d'envoyer un lien sécurisé.",
+    "signInHelp": "Saisissez votre email professionnel pour recevoir un lien magique.",
+    "dashboard": "Votre espace",
+    "signedInHint": "Vous êtes connecté. Cette zone est protégée."
+  },
+  "export": {
+    "compute": "Calculer les totaux",
+    "downloadPdf": "Télécharger le PDF"
+  },
+  "ui": {
+    "theme": {
+      "toggle": "Changer de thème",
+      "light": "Passer en mode clair",
+      "dark": "Passer en mode sombre"
+    },
+    "themeToggle": "Changer de thème",
+    "skipToContent": "Aller au contenu principal",
+    "loading": "Chargement...",
+    "error": "Une erreur est survenue",
+    "close": "Fermer",
+    "cancel": "Annuler",
+    "confirm": "Confirmer",
+    "save": "Enregistrer",
+    "edit": "Modifier",
+    "delete": "Supprimer"
+  }
+  ,
+  "landing": {
+    "headline": "Certificats CO₂ fournisseurs en 48h — confidentialité par défaut",
+    "sub": "Analyse automatique des factures, émission de certificats auditables et attribution Scope 3.1 acheteur — sans partager les factures.",
+    "primaryCta": "Lancer un pilote",
+    "secondaryCta": "Voir la démo",
+    "privacy": "Confidentialité par défaut",
+    "traceability": "Preuves et facteurs traçables",
+    "speed": "Certificat en 48 heures"
+  }
+}
